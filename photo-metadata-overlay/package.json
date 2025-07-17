@@ -1,0 +1,50 @@
+{
+  "name": "photo-metadata-overlay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext ts,tsx --fix",
+    "format": "prettier --write src/**/*.{ts,tsx,js,jsx,css,md}",
+    "format:check": "prettier --check src/**/*.{ts,tsx,js,jsx,css,md}"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "antd": "^5.26.5",
+    "fabric": "^6.7.0",
+    "framer-motion": "^12.23.6",
+    "lucide-react": "^0.525.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.1.11",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@tailwindcss/postcss": "^4.1.11",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.31.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.5.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3"
+  }
+}
