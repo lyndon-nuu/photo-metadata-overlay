@@ -44,7 +44,7 @@ function App() {
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">Error</h3>
                   <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
+                    <p>{error?.message || 'An error occurred'}</p>
                   </div>
                 </div>
               </div>
@@ -59,9 +59,7 @@ function App() {
                   Photo Viewer
                 </h2>
                 <div className="bg-gray-100 rounded-lg h-96 flex items-center justify-center">
-                  <p className="text-gray-500">
-                    Select a photo to get started
-                  </p>
+                  <p className="text-gray-500">Select a photo to get started</p>
                 </div>
               </div>
             </div>
