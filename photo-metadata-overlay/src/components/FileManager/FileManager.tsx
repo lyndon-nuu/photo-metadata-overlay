@@ -3,12 +3,10 @@ import {
   Image, 
   X, 
   Download, 
-  Filter, 
   Grid, 
   List, 
   Search,
   Camera,
-  Calendar,
   HardDrive,
   AlertTriangle
 } from 'lucide-react';
@@ -23,6 +21,8 @@ interface FileManagerProps {
   onClearAll?: () => void;
   onClearErrors?: () => void;
   onExportList?: () => void;
+  onFileSelect?: (photo: PhotoMetadata, file: File) => void;
+  selectedFile?: PhotoMetadata | null;
   className?: string;
 }
 
@@ -38,6 +38,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
   onClearAll,
   onClearErrors,
   onExportList,
+  onFileSelect,
+  selectedFile,
   className = '',
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -353,7 +355,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
           {filteredAndSortedFiles.map((file, index) => (
             <div
               key={`${file.filePath}-${index}`}
-              className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+              onClick={() => onFileSelect && onFileSelect(file, new File([], file.fileName, { type: file.mimeType }))}
+              className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer ${
+                selectedFile?.filePath === file.filePath
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 shadow-md'
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md'
+              }`}
             >
               <div className="flex items-center space-x-4 flex-1 min-w-0">
                 <Image className="w-8 h-8 text-gray-400 flex-shrink-0" />

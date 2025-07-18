@@ -7,8 +7,9 @@ import { cn } from '../../utils/cn';
 interface SettingsPanelProps {
   overlaySettings: OverlaySettings;
   frameSettings: FrameSettings;
-  onOverlaySettingsChange: (settings: OverlaySettings) => void;
-  onFrameSettingsChange: (settings: FrameSettings) => void;
+  onOverlayChange: (settings: OverlaySettings) => void;
+  onFrameChange: (settings: FrameSettings) => void;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -21,8 +22,9 @@ type TabType = 'overlay' | 'frame';
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   overlaySettings,
   frameSettings,
-  onOverlaySettingsChange,
-  onFrameSettingsChange,
+  onOverlayChange,
+  onFrameChange,
+  disabled = false,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overlay');
@@ -83,14 +85,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {activeTab === 'overlay' && (
           <OverlaySettingsTab
             settings={overlaySettings}
-            onChange={onOverlaySettingsChange}
+            onChange={onOverlayChange}
           />
         )}
         
         {activeTab === 'frame' && (
           <FrameSettingsTab
             settings={frameSettings}
-            onChange={onFrameSettingsChange}
+            onChange={onFrameChange}
           />
         )}
       </div>

@@ -30,17 +30,42 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
    */
   async loadImage(file: File): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        reject(new Error(`不支持的文件类型: ${file.type}。请使用图像文件。`));
+        return;
+      }
+
+      // 验证文件大小 (限制为50MB)
+      const maxSize = 50 * 1024 * 1024;
+      if (file.size > maxSize) {
+        reject(new Error(`文件过大: ${(file.size / 1024 / 1024).toFixed(1)}MB。最大支持50MB。`));
+        return;
+      }
+
+      console.log(`正在加载图像: ${file.name}, 类型: ${file.type}, 大小: ${(file.size / 1024).toFixed(1)}KB`);
+
       const img = new Image();
       const url = URL.createObjectURL(file);
 
+      // 设置超时处理
+      const timeout = setTimeout(() => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`图像加载超时: ${file.name}。请检查文件是否完整。`));
+      }, 30000); // 30秒超时
+
       img.onload = () => {
+        clearTimeout(timeout);
+        console.log(`图像加载成功: ${file.name}, 尺寸: ${img.naturalWidth}x${img.naturalHeight}`);
         URL.revokeObjectURL(url);
         resolve(img);
       };
 
-      img.onerror = () => {
+      img.onerror = (event) => {
+        clearTimeout(timeout);
+        console.error(`图像加载失败: ${file.name}`, event);
         URL.revokeObjectURL(url);
-        reject(new Error(`无法加载图像: ${file.name}`));
+        reject(new Error(`无法加载图像: ${file.name}。可能的原因：文件损坏、格式不支持或浏览器限制。`));
       };
 
       img.src = url;

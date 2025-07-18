@@ -1,13 +1,27 @@
 import { ConfigProvider } from 'antd';
+import { useState } from 'react';
 import { useAppStore } from './stores';
 import { FileSelector } from './components/FileSelector/FileSelector';
 import { FileManager } from './components/FileManager/FileManager';
+import { ImagePreview } from './components/ImagePreview/ImagePreview';
+import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { useFileManager } from './hooks/useFileManager';
-import { FileSelectedEvent } from './types';
+import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings } from './types';
+import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from './constants/design-tokens';
 import './App.css';
 
 function App() {
   const { isLoading, error } = useAppStore();
+  
+  // State for preview functionality
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoMetadata | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>(DEFAULT_OVERLAY_SETTINGS);
+  const [frameSettings, setFrameSettings] = useState<FrameSettings>(DEFAULT_FRAME_SETTINGS);
+  const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
+  
+  // Map to store original File objects by filename
+  const [fileMap, setFileMap] = useState<Map<string, File>>(new Map());
   
   const {
     selectedFiles,
@@ -28,7 +42,52 @@ function App() {
   const stats = getFileStats();
 
   const handleFileSelection = (event: FileSelectedEvent) => {
+    // Store original File objects in the map
+    const newFileMap = new Map(fileMap);
+    event.files.forEach(file => {
+      newFileMap.set(file.name, file);
+    });
+    setFileMap(newFileMap);
+    
     handleFilesSelected(event);
+    
+    // Auto-select first file for preview
+    if (event.files.length > 0 && !selectedFile) {
+      const firstFile = event.files[0];
+      setSelectedFile(firstFile);
+      
+      // Find corresponding PhotoMetadata (may not be available immediately due to async processing)
+      setTimeout(() => {
+        const photoMetadata = selectedFiles.find(f => f.fileName === firstFile.name);
+        if (photoMetadata) {
+          setSelectedPhoto(photoMetadata);
+        }
+      }, 100);
+    }
+  };
+
+  const handlePhotoSelect = (photo: PhotoMetadata, file: File) => {
+    setSelectedPhoto(photo);
+    // Use the original file from our map instead of the passed file
+    const originalFile = fileMap.get(photo.fileName);
+    if (originalFile) {
+      setSelectedFile(originalFile);
+    } else {
+      // Fallback to the passed file if not found in map
+      setSelectedFile(file);
+    }
+  };
+
+  const handleOverlaySettingsChange = (newSettings: OverlaySettings) => {
+    setOverlaySettings(newSettings);
+  };
+
+  const handleFrameSettingsChange = (newSettings: FrameSettings) => {
+    setFrameSettings(newSettings);
+  };
+
+  const handleProcessingComplete = (blob: Blob) => {
+    setProcessedBlob(blob);
   };
 
   return (
@@ -77,8 +136,8 @@ function App() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* File Selection Area */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Left Panel - File Selection and Management */}
             <div className="space-y-6">
               <div className="card">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">
@@ -92,6 +151,24 @@ function App() {
                   allowFolder={true}
                   showPreview={true}
                   disabled={isProcessing}
+                />
+              </div>
+
+              {/* File Management */}
+              <div className="card">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">
+                  文件管理
+                </h2>
+                <FileManager
+                  files={selectedFiles}
+                  errors={errors}
+                  isProcessing={isProcessing}
+                  onFileRemove={removeFile}
+                  onClearAll={clearFiles}
+                  onClearErrors={clearErrors}
+                  onExportList={exportFileList}
+                  onFileSelect={handlePhotoSelect}
+                  selectedFile={selectedPhoto}
                 />
               </div>
 
@@ -152,22 +229,62 @@ function App() {
               )}
             </div>
 
-            {/* File Management Area */}
-            <div className="space-y-6">
-              <div className="card">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">
-                  文件管理
-                </h2>
-                <FileManager
-                  files={selectedFiles}
-                  errors={errors}
-                  isProcessing={isProcessing}
-                  onFileRemove={removeFile}
-                  onClearAll={clearFiles}
-                  onClearErrors={clearErrors}
-                  onExportList={exportFileList}
+            {/* Center Panel - Real-time Preview */}
+            <div className="xl:col-span-2">
+              <div className="card h-full">
+                <ImagePreview
+                  photo={selectedPhoto}
+                  file={selectedFile}
+                  overlaySettings={overlaySettings}
+                  frameSettings={frameSettings}
+                  onProcessingComplete={handleProcessingComplete}
+                  className="h-full min-h-[600px]"
                 />
               </div>
+            </div>
+
+            {/* Right Panel - Settings */}
+            <div className="xl:col-start-1 xl:row-start-2 space-y-6">
+              <div className="card">
+                <SettingsPanel
+                  overlaySettings={overlaySettings}
+                  frameSettings={frameSettings}
+                  onOverlayChange={handleOverlaySettingsChange}
+                  onFrameChange={handleFrameSettingsChange}
+                  disabled={!selectedPhoto}
+                />
+              </div>
+
+              {/* Export Controls */}
+              {processedBlob && (
+                <div className="card">
+                  <h3 className="text-md font-medium text-gray-900 mb-3">
+                    导出控制
+                  </h3>
+                  <div className="space-y-3">
+                    <button
+                      className="w-full btn-primary"
+                      onClick={() => {
+                        if (processedBlob && selectedPhoto) {
+                          const url = URL.createObjectURL(processedBlob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }
+                      }}
+                    >
+                      下载处理后的图片
+                    </button>
+                    <div className="text-xs text-gray-500 text-center">
+                      图片大小: {processedBlob ? (processedBlob.size / 1024).toFixed(1) : 0} KB
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </main>

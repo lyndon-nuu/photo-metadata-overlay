@@ -14,6 +14,12 @@ export interface PhotoMetadata {
   hash?: string; // For duplicate detection
 }
 
+// File with metadata for UI components
+export interface FileWithMetadata {
+  file: File;
+  metadata: PhotoMetadata;
+}
+
 export interface ExifData {
   // Camera information
   make?: string; // Camera manufacturer
