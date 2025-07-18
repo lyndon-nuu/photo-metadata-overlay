@@ -1,5 +1,15 @@
 // Test setup file
-import { vi } from 'vitest';
+import { vi, expect, afterEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
+import * as matchers from '@testing-library/jest-dom/matchers';
+
+// extends Vitest's expect
+expect.extend(matchers);
+
+// runs a cleanup after each test case (e.g. clearing jsdom)
+afterEach(() => {
+  cleanup();
+});
 
 // Mock crypto.subtle for testing
 Object.defineProperty(globalThis, 'crypto', {

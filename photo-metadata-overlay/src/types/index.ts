@@ -408,9 +408,11 @@ export interface ImageProcessingService {
 }
 
 export interface BrandLogoService {
-  getLogoByBrand(brand: string): Promise<HTMLImageElement | null>;
+  getBrandLogo(brandName: string): Promise<string | null>;
+  isBrandSupported(brandName: string): boolean;
   getSupportedBrands(): string[];
-  preloadLogos(): Promise<void>;
+  clearCache(brandName?: string): void;
+  preloadLogos(brands?: string[]): Promise<void>;
 }
 
 export interface StorageService {
