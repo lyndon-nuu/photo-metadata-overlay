@@ -90,7 +90,34 @@ export const DESIGN_TOKENS: DesignTokens = {
   },
 };
 
-// Predefined overlay templates
+// Default overlay settings (aligned with new OverlaySettings interface)
+export const DEFAULT_OVERLAY_SETTINGS = {
+  position: 'bottom-left' as const,
+  font: {
+    family: 'Inter',
+    size: 14,
+    color: '#ffffff',
+    weight: 'normal' as const,
+  },
+  background: {
+    color: 'rgba(0, 0, 0, 0.7)',
+    opacity: 0.8,
+    padding: 12,
+    borderRadius: 8,
+  },
+  displayItems: {
+    brand: true,
+    model: true,
+    aperture: true,
+    shutterSpeed: true,
+    iso: true,
+    timestamp: false,
+    location: false,
+    brandLogo: true,
+  },
+} as const;
+
+// Predefined overlay templates (legacy support)
 export const DEFAULT_OVERLAY_TEMPLATES = [
   {
     id: 'minimal',
@@ -126,7 +153,78 @@ export const DEFAULT_OVERLAY_TEMPLATES = [
   },
 ] as const;
 
-// Default frame styles
+// Default frame settings (aligned with new FrameSettings interface)
+export const DEFAULT_FRAME_SETTINGS = {
+  enabled: false,
+  style: 'simple' as const,
+  color: '#ffffff',
+  width: 20,
+  opacity: 1,
+  customProperties: {
+    shadowBlur: 10,
+    shadowOffset: { x: 0, y: 5 },
+    cornerRadius: 8,
+  },
+} as const;
+
+// Frame style presets
+export const FRAME_STYLE_PRESETS = [
+  {
+    id: 'simple',
+    name: 'Simple Border',
+    style: 'simple' as const,
+    color: '#ffffff',
+    width: 20,
+    opacity: 1,
+  },
+  {
+    id: 'shadow',
+    name: 'Drop Shadow',
+    style: 'shadow' as const,
+    color: '#ffffff',
+    width: 30,
+    opacity: 1,
+    customProperties: {
+      shadowBlur: 20,
+      shadowOffset: { x: 0, y: 10 },
+      cornerRadius: 0,
+    },
+  },
+  {
+    id: 'film',
+    name: 'Film Strip',
+    style: 'film' as const,
+    color: '#2c2c2c',
+    width: 40,
+    opacity: 1,
+  },
+  {
+    id: 'polaroid',
+    name: 'Polaroid',
+    style: 'polaroid' as const,
+    color: '#f8f8f8',
+    width: 50,
+    opacity: 1,
+    customProperties: {
+      cornerRadius: 8,
+      shadowBlur: 15,
+      shadowOffset: { x: 0, y: 8 },
+    },
+  },
+  {
+    id: 'vintage',
+    name: 'Vintage',
+    style: 'vintage' as const,
+    color: '#d4af37',
+    width: 25,
+    opacity: 0.9,
+    customProperties: {
+      cornerRadius: 4,
+    },
+  },
+] as const;
+
+// Legacy frame styles (for backward compatibility)
 export const DEFAULT_FRAME_STYLES = [
   {
     id: 'simple',
@@ -236,4 +334,55 @@ export const DEFAULT_SHORTCUTS = {
   undo: 'Ctrl+Z',
   redo: 'Ctrl+Y',
   save: 'Ctrl+S',
+} as const;
+
+// Default processing settings
+export const DEFAULT_PROCESSING_SETTINGS = {
+  exportFormat: 'jpeg' as const,
+  exportQuality: 0.9,
+  outputPath: '',
+  preserveOriginal: true,
+  addSuffix: true,
+  suffix: '_processed',
+} as const;
+
+// Error message templates
+export const ERROR_MESSAGES = {
+  FILE_NOT_FOUND: 'File not found or has been moved',
+  FILE_READ_ERROR: 'Unable to read file. Please check file permissions',
+  INVALID_FILE_FORMAT: 'Unsupported file format. Please use JPEG, PNG, or other supported formats',
+  EXIF_READ_ERROR: 'Unable to read photo metadata. File may be corrupted',
+  IMAGE_PROCESSING_ERROR: 'Error occurred while processing image',
+  EXPORT_ERROR: 'Failed to export processed image',
+  STORAGE_ERROR: 'Unable to save settings. Please check disk space',
+  NETWORK_ERROR: 'Network connection error occurred',
+  ACCESS_DENIED: 'Access denied. Please check file permissions',
+  UNSUPPORTED_FORMAT: 'File format is not supported',
+  MEMORY_ERROR: 'Insufficient memory to process this image',
+  TIMEOUT_ERROR: 'Operation timed out. Please try again',
+  CANVAS_ERROR: 'Canvas rendering error occurred',
+  FONT_LOAD_ERROR: 'Failed to load font',
+  LOGO_LOAD_ERROR: 'Failed to load brand logo',
+  UNKNOWN_ERROR: 'An unexpected error occurred',
+} as const;
+
+// Processing step labels
+export const PROCESSING_STEP_LABELS = {
+  file_validation: 'Validating file',
+  exif_extraction: 'Reading metadata',
+  image_loading: 'Loading image',
+  overlay_application: 'Applying overlay',
+  frame_application: 'Applying frame',
+  export: 'Exporting image',
+  save: 'Saving file',
+} as const;
+
+// Default processing status
+export const DEFAULT_PROCESSING_STATUS = {
+  isProcessing: false,
+  currentFile: undefined,
+  progress: 0,
+  totalFiles: 0,
+  completedFiles: 0,
+  errors: [],
 } as const;

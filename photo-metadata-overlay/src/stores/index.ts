@@ -2,17 +2,19 @@ import { create } from 'zustand';
 import {
   PhotoMetadata,
   OverlayConfig,
+  OverlaySettings,
   FrameSettings,
   AppState,
   AppError,
   ProcessingTask,
+  ProcessingStatus,
   UserSettings,
 } from '../types';
 
 interface AppStore extends AppState {
   // Actions
   setCurrentPhoto: (photo: PhotoMetadata | null) => void;
-  setOverlayConfig: (config: OverlayConfig | null) => void;
+  setOverlaySettings: (settings: OverlaySettings | null) => void;
   setFrameSettings: (settings: FrameSettings | null) => void;
   setPreviewMode: (isPreview: boolean) => void;
   setLoading: (isLoading: boolean) => void;
@@ -28,6 +30,10 @@ interface AppStore extends AppState {
   ) => void;
   removeProcessingTask: (taskId: string) => void;
   clearProcessingQueue: () => void;
+  updateProcessingStatus: (status: Partial<ProcessingStatus>) => void;
+
+  // Legacy support
+  setOverlayConfig: (config: OverlayConfig | null) => void;
 
   // Computed values
   hasPhoto: () => boolean;
@@ -40,17 +46,24 @@ interface AppStore extends AppState {
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   currentPhoto: null,
-  overlayConfig: null,
+  overlaySettings: null,
   frameSettings: null,
   isPreviewMode: false,
   isLoading: false,
   error: null,
   selectedFiles: [],
   processingQueue: [],
+  processingStatus: {
+    isProcessing: false,
+    progress: 0,
+    totalFiles: 0,
+    completedFiles: 0,
+    errors: [],
+  },
 
   // Actions
   setCurrentPhoto: photo => set({ currentPhoto: photo }),
-  setOverlayConfig: config => set({ overlayConfig: config }),
+  setOverlaySettings: settings => set({ overlaySettings: settings }),
   setFrameSettings: settings => set({ frameSettings: settings }),
   setPreviewMode: isPreview => set({ isPreviewMode: isPreview }),
   setLoading: isLoading => set({ isLoading }),
@@ -83,17 +96,29 @@ export const useAppStore = create<AppStore>((set, get) => ({
     })),
   clearProcessingQueue: () => set({ processingQueue: [] }),
 
+  updateProcessingStatus: status =>
+    set(state => ({
+      processingStatus: { ...state.processingStatus, ...status },
+    })),
+
+  // Legacy support
+  setOverlayConfig: (_config) => {
+    // Convert OverlayConfig to OverlaySettings if needed
+    // For now, just ignore this legacy method
+    console.warn('setOverlayConfig is deprecated, use setOverlaySettings instead');
+  },
+
   // Computed values
   hasPhoto: () => get().currentPhoto !== null,
-  hasOverlay: () => get().overlayConfig !== null,
+  hasOverlay: () => get().overlaySettings !== null,
   hasFrame: () => get().frameSettings !== null,
   isProcessing: () =>
-    get().processingQueue.some(task => task.status === 'processing'),
+    get().processingQueue.some(task => task.status === 'processing') ||
+    get().processingStatus.isProcessing,
   getProcessingProgress: () => {
-    const tasks = get().processingQueue;
-    if (tasks.length === 0) return 0;
-    const totalProgress = tasks.reduce((sum, task) => sum + task.progress, 0);
-    return totalProgress / tasks.length;
+    const status = get().processingStatus;
+    if (status.totalFiles === 0) return 0;
+    return (status.completedFiles / status.totalFiles) * 100;
   },
 }));
 
@@ -142,19 +167,25 @@ export const useOverlayStore = create<OverlayStore>((set, get) => ({
   getTemplateById: id => get().templates.find(t => t.id === id),
 }));
 
+// Frame preset interface (extends FrameSettings with id for store management)
+interface FramePreset extends FrameSettings {
+  id: string;
+  name: string;
+}
+
 // Frame settings store
 interface FrameStore {
-  presets: FrameSettings[];
-  currentPreset: FrameSettings | null;
+  presets: FramePreset[];
+  currentPreset: FramePreset | null;
 
   // Actions
-  addPreset: (preset: FrameSettings) => void;
-  updatePreset: (id: string, updates: Partial<FrameSettings>) => void;
+  addPreset: (preset: FramePreset) => void;
+  updatePreset: (id: string, updates: Partial<FramePreset>) => void;
   deletePreset: (id: string) => void;
-  setCurrentPreset: (preset: FrameSettings | null) => void;
+  setCurrentPreset: (preset: FramePreset | null) => void;
 
   // Getters
-  getPresetById: (id: string) => FrameSettings | undefined;
+  getPresetById: (id: string) => FramePreset | undefined;
 }
 
 export const useFrameStore = create<FrameStore>((set, get) => ({

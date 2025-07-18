@@ -63,6 +63,29 @@ export class ExifServiceImpl implements ExifService {
   }
 
   /**
+   * 验证图片文件是否有效
+   * @param file 图片文件
+   * @returns boolean 是否有效
+   */
+  validateImageFile(file: File): boolean {
+    // Check file type
+    if (!this.isSupported(file.type)) {
+      return false;
+    }
+    
+    // Check file size (max 100MB)
+    const maxSize = 100 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return false;
+    }
+    
+    // Check file extension
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.tiff', '.tif', '.bmp'];
+    const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    return validExtensions.includes(extension);
+  }
+
+  /**
    * 将原始EXIF数据标准化为ExifData格式
    * @param rawExif 原始EXIF数据
    * @returns ExifData 标准化的EXIF数据
@@ -82,76 +105,107 @@ export class ExifServiceImpl implements ExifService {
     }
 
     // 拍摄参数
-    if (rawExif.FocalLength) {
-      exifData.focalLength = `${rawExif.FocalLength}mm`;
+    const focalLength = this.toNumber(rawExif.FocalLength);
+    if (focalLength) {
+      exifData.focalLength = `${focalLength}mm`;
     }
-    if (rawExif.FNumber || rawExif.ApertureValue) {
-      const aperture = rawExif.FNumber || rawExif.ApertureValue;
+    
+    const aperture = this.toNumber(rawExif.FNumber || rawExif.ApertureValue);
+    if (aperture) {
       exifData.aperture = `f/${aperture}`;
     }
-    if (rawExif.ExposureTime || rawExif.ShutterSpeedValue) {
-      const exposureTime = rawExif.ExposureTime || rawExif.ShutterSpeedValue;
+    
+    const exposureTime = this.toNumber(rawExif.ExposureTime || rawExif.ShutterSpeedValue);
+    if (exposureTime) {
       exifData.shutterSpeed = this.formatShutterSpeed(exposureTime);
     }
-    if (rawExif.ISO || rawExif.ISOSpeedRatings) {
-      const iso = rawExif.ISO || rawExif.ISOSpeedRatings;
+    
+    const iso = this.toNumber(rawExif.ISO || rawExif.ISOSpeedRatings);
+    if (iso) {
       exifData.iso = `ISO ${iso}`;
     }
 
     // 拍摄模式
-    if (rawExif.ExposureMode !== undefined) {
-      exifData.exposureMode = this.getExposureMode(rawExif.ExposureMode);
+    const exposureMode = this.toNumber(rawExif.ExposureMode);
+    if (exposureMode !== undefined) {
+      exifData.exposureMode = this.getExposureMode(exposureMode);
     }
-    if (rawExif.MeteringMode !== undefined) {
-      exifData.meteringMode = this.getMeteringMode(rawExif.MeteringMode);
+    
+    const meteringMode = this.toNumber(rawExif.MeteringMode);
+    if (meteringMode !== undefined) {
+      exifData.meteringMode = this.getMeteringMode(meteringMode);
     }
-    if (rawExif.WhiteBalance !== undefined) {
-      exifData.whiteBalance = this.getWhiteBalance(rawExif.WhiteBalance);
+    
+    const whiteBalance = this.toNumber(rawExif.WhiteBalance);
+    if (whiteBalance !== undefined) {
+      exifData.whiteBalance = this.getWhiteBalance(whiteBalance);
     }
-    if (rawExif.Flash !== undefined) {
-      exifData.flash = this.getFlashMode(rawExif.Flash);
+    
+    const flash = this.toNumber(rawExif.Flash);
+    if (flash !== undefined) {
+      exifData.flash = this.getFlashMode(flash);
     }
 
     // 日期时间
-    if (rawExif.DateTime) {
-      exifData.dateTime = rawExif.DateTime.toISOString();
+    const dateTime = this.toDateString(rawExif.DateTime);
+    if (dateTime) {
+      exifData.dateTime = dateTime;
     }
-    if (rawExif.DateTimeOriginal) {
-      exifData.dateTimeOriginal = rawExif.DateTimeOriginal.toISOString();
+    
+    const dateTimeOriginal = this.toDateString(rawExif.DateTimeOriginal);
+    if (dateTimeOriginal) {
+      exifData.dateTimeOriginal = dateTimeOriginal;
     }
-    if (rawExif.DateTimeDigitized) {
-      exifData.dateTimeDigitized = rawExif.DateTimeDigitized.toISOString();
+    
+    const dateTimeDigitized = this.toDateString(rawExif.DateTimeDigitized);
+    if (dateTimeDigitized) {
+      exifData.dateTimeDigitized = dateTimeDigitized;
     }
 
     // GPS信息
-    if (rawExif.latitude && rawExif.longitude) {
+    const latitude = this.toNumber(rawExif.latitude);
+    const longitude = this.toNumber(rawExif.longitude);
+    if (latitude !== undefined && longitude !== undefined) {
       exifData.gps = {
-        latitude: rawExif.latitude,
-        longitude: rawExif.longitude,
+        latitude,
+        longitude,
       };
-      if (rawExif.GPSAltitude) {
-        exifData.gps.altitude = rawExif.GPSAltitude;
+      
+      const altitude = this.toNumber(rawExif.GPSAltitude);
+      if (altitude !== undefined) {
+        exifData.gps.altitude = altitude;
       }
-      if (rawExif.GPSImgDirection) {
-        exifData.gps.direction = rawExif.GPSImgDirection;
+      
+      const direction = this.toNumber(rawExif.GPSImgDirection);
+      if (direction !== undefined) {
+        exifData.gps.direction = direction;
       }
     }
 
     // 图像属性
-    if (rawExif.ColorSpace !== undefined) {
-      exifData.colorSpace = this.getColorSpace(rawExif.ColorSpace);
+    const colorSpace = this.toNumber(rawExif.ColorSpace);
+    if (colorSpace !== undefined) {
+      exifData.colorSpace = this.getColorSpace(colorSpace);
     }
-    if (rawExif.Orientation !== undefined) {
-      exifData.orientation = rawExif.Orientation;
+    
+    const orientation = this.toNumber(rawExif.Orientation);
+    if (orientation !== undefined) {
+      exifData.orientation = orientation;
     }
-    if (rawExif.XResolution) {
-      exifData.xResolution = rawExif.XResolution;
+    
+    const xResolution = this.toNumber(rawExif.XResolution);
+    if (xResolution !== undefined) {
+      exifData.xResolution = xResolution;
     }
-    if (rawExif.YResolution) {
-      exifData.yResolution = rawExif.YResolution;
+    
+    const yResolution = this.toNumber(rawExif.YResolution);
+    if (yResolution !== undefined) {
+      exifData.yResolution = yResolution;
     }
-    if (rawExif.ResolutionUnit !== undefined) {
-      exifData.resolutionUnit = this.getResolutionUnit(rawExif.ResolutionUnit);
+    
+    const resolutionUnit = this.toNumber(rawExif.ResolutionUnit);
+    if (resolutionUnit !== undefined) {
+      exifData.resolutionUnit = this.getResolutionUnit(resolutionUnit);
     }
 
     // 附加元数据
@@ -174,8 +228,45 @@ export class ExifServiceImpl implements ExifService {
   /**
    * 清理字符串，移除多余的空白字符
    */
-  private cleanString(str: string): string {
-    return str?.toString().trim().replace(/\0/g, '') || '';
+  private cleanString(str: unknown): string {
+    if (typeof str === 'string') {
+      return str.trim().replace(/\0/g, '');
+    }
+    if (str != null) {
+      return str.toString().trim().replace(/\0/g, '');
+    }
+    return '';
+  }
+
+  /**
+   * 安全地转换为数字
+   */
+  private toNumber(value: unknown): number | undefined {
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const num = parseFloat(value);
+      return isNaN(num) ? undefined : num;
+    }
+    return undefined;
+  }
+
+  /**
+   * 安全地转换为日期字符串
+   */
+  private toDateString(value: unknown): string | undefined {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    if (typeof value === 'string') {
+      try {
+        return new Date(value).toISOString();
+      } catch {
+        return value;
+      }
+    }
+    return undefined;
   }
 
   /**

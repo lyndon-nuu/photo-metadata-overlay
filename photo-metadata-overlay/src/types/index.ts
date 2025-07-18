@@ -57,7 +57,34 @@ export interface ExifData {
   imageDescription?: string;
 }
 
-// Overlay configuration types
+// Overlay settings types (aligned with design document)
+export interface OverlaySettings {
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  font: {
+    family: string;
+    size: number;
+    color: string;
+    weight: 'normal' | 'bold';
+  };
+  background: {
+    color: string;
+    opacity: number;
+    padding: number;
+    borderRadius: number;
+  };
+  displayItems: {
+    brand: boolean;
+    model: boolean;
+    aperture: boolean;
+    shutterSpeed: boolean;
+    iso: boolean;
+    timestamp: boolean;
+    location: boolean;
+    brandLogo: boolean;
+  };
+}
+
+// Legacy overlay config for backward compatibility
 export interface OverlayConfig {
   id: string;
   name: string;
@@ -109,8 +136,22 @@ export interface MetadataField {
   format?: string;
 }
 
-// Frame settings types
+// Frame settings types (aligned with design document)
 export interface FrameSettings {
+  enabled: boolean;
+  style: 'simple' | 'shadow' | 'film' | 'polaroid' | 'vintage';
+  color: string;
+  width: number;
+  opacity: number;
+  customProperties?: {
+    shadowBlur?: number;
+    shadowOffset?: { x: number; y: number };
+    cornerRadius?: number;
+  };
+}
+
+// Legacy frame types for backward compatibility
+export interface LegacyFrameSettings {
   id: string;
   name: string;
   enabled: boolean;
@@ -143,13 +184,15 @@ export interface ShadowSettings {
   opacity: number;
 }
 
-// Error handling types
+// Error handling types (comprehensive error system)
 export interface AppError {
-  code: string;
+  code: ErrorCode;
   message: string;
   details?: string;
   timestamp: Date;
   severity: 'low' | 'medium' | 'high' | 'critical';
+  fileName?: string;
+  stack?: string;
 }
 
 export type ErrorCode =
@@ -161,30 +204,109 @@ export type ErrorCode =
   | 'EXPORT_ERROR'
   | 'STORAGE_ERROR'
   | 'NETWORK_ERROR'
+  | 'ACCESS_DENIED'
+  | 'UNSUPPORTED_FORMAT'
+  | 'MEMORY_ERROR'
+  | 'TIMEOUT_ERROR'
+  | 'CANVAS_ERROR'
+  | 'FONT_LOAD_ERROR'
+  | 'LOGO_LOAD_ERROR'
   | 'UNKNOWN_ERROR';
+
+// File processing errors
+export interface FileError extends AppError {
+  fileName: string;
+  filePath: string;
+  fileSize?: number;
+}
+
+export interface ProcessingError extends AppError {
+  fileName: string;
+  step: ProcessingStep;
+  retryCount?: number;
+}
+
+export type ProcessingStep = 
+  | 'file_validation'
+  | 'exif_extraction'
+  | 'image_loading'
+  | 'overlay_application'
+  | 'frame_application'
+  | 'export'
+  | 'save';
+
+// User-friendly error messages
+export interface UserFriendlyMessage {
+  message: string;
+  severity: 'info' | 'warning' | 'error' | 'success';
+  action?: string;
+  dismissible?: boolean;
+}
+
+// Processing status types (aligned with design document)
+export interface ProcessingStatus {
+  isProcessing: boolean;
+  currentFile?: string;
+  progress: number;
+  totalFiles: number;
+  completedFiles: number;
+  errors: ProcessingError[];
+}
+
+export interface ProcessProgress {
+  taskId: string;
+  fileName: string;
+  progress: number;
+  status: ProcessingTaskStatus;
+  error?: ProcessingError;
+}
+
+export interface ProcessingResults {
+  totalFiles: number;
+  successCount: number;
+  errorCount: number;
+  errors: ProcessingError[];
+  duration: number;
+  outputPath?: string;
+}
+
+export type ProcessingTaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+// Processing settings
+export interface ProcessingSettings {
+  overlaySettings: OverlaySettings;
+  frameSettings: FrameSettings;
+  exportFormat: 'jpeg' | 'png';
+  exportQuality: number;
+  outputPath: string;
+  preserveOriginal: boolean;
+  addSuffix: boolean;
+  suffix: string;
+}
 
 // Application state types
 export interface AppState {
   currentPhoto: PhotoMetadata | null;
-  overlayConfig: OverlayConfig | null;
+  overlaySettings: OverlaySettings | null;
   frameSettings: FrameSettings | null;
   isPreviewMode: boolean;
   isLoading: boolean;
   error: AppError | null;
   selectedFiles: PhotoMetadata[];
   processingQueue: ProcessingTask[];
+  processingStatus: ProcessingStatus;
 }
 
 export interface ProcessingTask {
   id: string;
   photo: PhotoMetadata;
-  overlayConfig: OverlayConfig;
-  frameSettings?: FrameSettings;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  settings: ProcessingSettings;
+  status: ProcessingTaskStatus;
   progress: number;
-  error?: AppError;
+  error?: ProcessingError;
   startTime?: Date;
   endTime?: Date;
+  outputPath?: string;
 }
 
 // Settings and configuration types
@@ -264,14 +386,19 @@ export interface BatchProcessorProps {
 export interface ExifService {
   extractMetadata(file: File): Promise<ExifData>;
   isSupported(mimeType: string): boolean;
+  validateImageFile(file: File): boolean;
 }
 
 export interface ImageProcessingService {
   loadImage(file: File): Promise<HTMLImageElement>;
   applyOverlay(
     image: HTMLImageElement,
-    overlay: OverlayConfig,
-    frame?: FrameSettings
+    metadata: PhotoMetadata,
+    settings: OverlaySettings
+  ): Promise<HTMLCanvasElement>;
+  applyFrame(
+    canvas: HTMLCanvasElement,
+    frameSettings: FrameSettings
   ): Promise<HTMLCanvasElement>;
   exportImage(
     canvas: HTMLCanvasElement,
@@ -280,9 +407,19 @@ export interface ImageProcessingService {
   ): Promise<Blob>;
 }
 
+export interface BrandLogoService {
+  getLogoByBrand(brand: string): Promise<HTMLImageElement | null>;
+  getSupportedBrands(): string[];
+  preloadLogos(): Promise<void>;
+}
+
 export interface StorageService {
   saveSettings(settings: UserSettings): Promise<void>;
   loadSettings(): Promise<UserSettings>;
+  saveOverlaySettings(settings: OverlaySettings): Promise<void>;
+  loadOverlaySettings(): Promise<OverlaySettings>;
+  saveFrameSettings(settings: FrameSettings): Promise<void>;
+  loadFrameSettings(): Promise<FrameSettings>;
   saveTemplate(template: OverlayConfig): Promise<void>;
   loadTemplates(): Promise<OverlayConfig[]>;
   deleteTemplate(id: string): Promise<void>;

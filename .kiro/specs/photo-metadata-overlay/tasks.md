@@ -6,7 +6,7 @@
   - 设置代码规范和 ESLint/Prettier 配置
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 2. 核心数据模型和类型定义
+- [x] 2. 核心数据模型和类型定义
   - 定义 PhotoMetadata、OverlaySettings、FrameSettings 等核心接口
   - 创建错误处理类型和状态管理类型
   - 实现设计系统的类型定义和常量
