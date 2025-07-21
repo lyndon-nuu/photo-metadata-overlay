@@ -1,5 +1,6 @@
 import { ConfigProvider } from 'antd';
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, useSettingsStore } from './stores';
 import { FileSelector } from './components/FileSelector/FileSelector';
 import { FileManager } from './components/FileManager/FileManager';
@@ -7,14 +8,26 @@ import { ImagePreview } from './components/ImagePreview/ImagePreview';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { SettingsManager } from './components/SettingsManager/SettingsManager';
 import { BatchProcessor } from './components/BatchProcessor/BatchProcessor';
+
+import { LoadingSpinner } from './components/UI/LoadingSpinner';
+import { ToastContainer } from './components/UI/Toast';
 import { useFileManager } from './hooks/useFileManager';
 import { useAutoSave } from './hooks/useAutoSave';
+import { useToast } from './hooks/useToast';
 import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings } from './types';
 import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from './constants/design-tokens';
 import { storageService } from './services/storage.service';
 import './App.css';
 
+// 添加演示模式检查
+const isDemoMode = window.location.search.includes('demo=true');
+
 function App() {
+  // 如果是演示模式，显示演示组件
+  if (isDemoMode) {
+    const { AnimationDemo } = require('./demo/AnimationDemo');
+    return <AnimationDemo />;
+  }
   const { isLoading, error } = useAppStore();
   const { loadSettings } = useSettingsStore();
   
@@ -32,6 +45,9 @@ function App() {
 
   // 自动保存Hook
   const { isAutoSaveEnabled } = useAutoSave(overlaySettings, frameSettings);
+  
+  // Toast通知Hook
+  const { toasts, removeToast, success } = useToast();
 
   // 初始化时加载设置
   useEffect(() => {
@@ -86,6 +102,14 @@ function App() {
     
     handleFilesSelected(event);
     
+    // 显示成功通知
+    if (event.files.length > 0) {
+      success(
+        '文件加载成功',
+        `已成功加载 ${event.files.length} 个文件`
+      );
+    }
+    
     // Auto-select first file for preview
     if (event.files.length > 0 && !selectedFile) {
       const firstFile = event.files[0];
@@ -123,6 +147,7 @@ function App() {
 
   const handleProcessingComplete = (blob: Blob) => {
     setProcessedBlob(blob);
+    success('图像处理完成', '图像已成功处理，可以下载了');
   };
 
   return (
@@ -170,29 +195,59 @@ function App() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {isLoading && (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          )}
+          <AnimatePresence>
+            {isLoading && (
+              <motion.div 
+                className="flex justify-center items-center h-64"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <LoadingSpinner size="lg" text="加载中..." />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">错误</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error?.message || '发生了一个错误'}</p>
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                className="bg-red-50 border border-red-200 rounded-md p-4 mb-6"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="flex">
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">错误</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{error?.message || '发生了一个错误'}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <motion.div 
+            className="grid grid-cols-1 xl:grid-cols-3 gap-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, staggerChildren: 0.1 }}
+          >
             {/* Left Panel - File Selection and Management */}
-            <div className="space-y-6">
-              <div className="card">
+            <motion.div 
+              className="space-y-6"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <motion.div 
+                className="card"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
                 <h2 className="text-lg font-medium text-gray-900 mb-4">
                   文件选择
                 </h2>
@@ -205,10 +260,14 @@ function App() {
                   showPreview={true}
                   disabled={isProcessing}
                 />
-              </div>
+              </motion.div>
 
               {/* File Management */}
-              <div className="card">
+              <motion.div 
+                className="card"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
                 <h2 className="text-lg font-medium text-gray-900 mb-4">
                   文件管理
                 </h2>
@@ -223,68 +282,118 @@ function App() {
                   onFileSelect={handlePhotoSelect}
                   selectedFile={selectedPhoto}
                 />
-              </div>
+              </motion.div>
 
               {/* Processing Progress */}
-              {isProcessing && (
-                <div className="card">
-                  <h3 className="text-md font-medium text-gray-900 mb-3">
-                    处理进度
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>正在处理: {progress.fileName}</span>
-                      <span>{progress.current} / {progress.total}</span>
+              <AnimatePresence>
+                {isProcessing && (
+                  <motion.div 
+                    className="card"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <h3 className="text-md font-medium text-gray-900 mb-3">
+                      处理进度
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>正在处理: {progress.fileName}</span>
+                        <span>{progress.current} / {progress.total}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <motion.div 
+                          className="bg-blue-600 h-2 rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ 
+                            width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` 
+                          }}
+                          transition={{ duration: 0.5, ease: "easeOut" }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* File Statistics */}
-              {stats.totalFiles > 0 && (
-                <div className="card">
-                  <h3 className="text-md font-medium text-gray-900 mb-3">
-                    文件统计
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">总文件数:</span>
-                      <span className="ml-2 font-medium text-gray-900">
-                        {stats.totalFiles}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">总大小:</span>
-                      <span className="ml-2 font-medium text-gray-900">
-                        {(stats.totalSize / (1024 * 1024)).toFixed(2)} MB
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">错误数:</span>
-                      <span className="ml-2 font-medium text-red-600">
-                        {stats.errorCount}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">文件类型:</span>
-                      <span className="ml-2 font-medium text-gray-900">
-                        {Object.keys(stats.fileTypes).join(', ') || '无'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+              <AnimatePresence>
+                {stats.totalFiles > 0 && (
+                  <motion.div 
+                    className="card"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <h3 className="text-md font-medium text-gray-900 mb-3">
+                      文件统计
+                    </h3>
+                    <motion.div 
+                      className="grid grid-cols-2 gap-4 text-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2, staggerChildren: 0.1 }}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                      >
+                        <span className="text-gray-600">总文件数:</span>
+                        <span className="ml-2 font-medium text-gray-900">
+                          {stats.totalFiles}
+                        </span>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                      >
+                        <span className="text-gray-600">总大小:</span>
+                        <span className="ml-2 font-medium text-gray-900">
+                          {(stats.totalSize / (1024 * 1024)).toFixed(2)} MB
+                        </span>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        <span className="text-gray-600">错误数:</span>
+                        <span className="ml-2 font-medium text-red-600">
+                          {stats.errorCount}
+                        </span>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        <span className="text-gray-600">文件类型:</span>
+                        <span className="ml-2 font-medium text-gray-900">
+                          {Object.keys(stats.fileTypes).join(', ') || '无'}
+                        </span>
+                      </motion.div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
 
             {/* Center Panel - Real-time Preview */}
-            <div className="xl:col-span-2">
-              <div className="card h-full">
+            <motion.div 
+              className="xl:col-span-2"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <motion.div 
+                className="card h-full"
+                whileHover={{ scale: 1.01 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
                 <ImagePreview
                   photo={selectedPhoto}
                   file={selectedFile}
@@ -293,12 +402,21 @@ function App() {
                   onProcessingComplete={handleProcessingComplete}
                   className="h-full min-h-[600px]"
                 />
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
             {/* Right Panel - Settings */}
-            <div className="xl:col-start-1 xl:row-start-2 space-y-6">
-              <div className="card">
+            <motion.div 
+              className="xl:col-start-1 xl:row-start-2 space-y-6"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <motion.div 
+                className="card"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
                 <SettingsPanel
                   overlaySettings={overlaySettings}
                   frameSettings={frameSettings}
@@ -306,88 +424,159 @@ function App() {
                   onFrameChange={handleFrameSettingsChange}
                   disabled={!selectedPhoto}
                 />
-              </div>
+              </motion.div>
 
               {/* Export Controls */}
-              {processedBlob && (
-                <div className="card">
-                  <h3 className="text-md font-medium text-gray-900 mb-3">
-                    导出控制
-                  </h3>
-                  <div className="space-y-3">
-                    <button
-                      className="w-full btn-primary"
-                      onClick={() => {
-                        if (processedBlob && selectedPhoto) {
-                          const url = URL.createObjectURL(processedBlob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                        }
-                      }}
-                    >
-                      下载处理后的图片
-                    </button>
-                    <div className="text-xs text-gray-500 text-center">
-                      图片大小: {processedBlob ? (processedBlob.size / 1024).toFixed(1) : 0} KB
+              <AnimatePresence>
+                {processedBlob && (
+                  <motion.div 
+                    className="card"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <h3 className="text-md font-medium text-gray-900 mb-3">
+                      导出控制
+                    </h3>
+                    <div className="space-y-3">
+                      <motion.button
+                        className="w-full btn-primary"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          if (processedBlob && selectedPhoto) {
+                            const url = URL.createObjectURL(processedBlob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }
+                        }}
+                      >
+                        下载处理后的图片
+                      </motion.button>
+                      <motion.div 
+                        className="text-xs text-gray-500 text-center"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        图片大小: {processedBlob ? (processedBlob.size / 1024).toFixed(1) : 0} KB
+                      </motion.div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
         </main>
 
         {/* Settings Manager Modal */}
-        {showSettingsManager && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <SettingsManager onClose={() => setShowSettingsManager(false)} />
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {showSettingsManager && (
+            <motion.div 
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              onClick={() => setShowSettingsManager(false)}
+            >
+              <motion.div 
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <SettingsManager onClose={() => setShowSettingsManager(false)} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Batch Processor Modal */}
-        {showBatchProcessor && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    批量处理
-                  </h2>
-                  <button
-                    onClick={() => setShowBatchProcessor(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        <AnimatePresence>
+          {showBatchProcessor && (
+            <motion.div 
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              onClick={() => setShowBatchProcessor(false)}
+            >
+              <motion.div 
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <motion.h2 
+                      className="text-2xl font-bold text-gray-900 dark:text-gray-100"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      批量处理
+                    </motion.h2>
+                    <motion.button
+                      onClick={() => setShowBatchProcessor(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      initial={{ opacity: 0, rotate: -90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </motion.button>
+                  </div>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                    <BatchProcessor
+                      files={selectedFiles}
+                      fileMap={fileMap}
+                      overlaySettings={overlaySettings}
+                      frameSettings={frameSettings}
+                      onComplete={(results) => {
+                        console.log('批量处理完成:', results);
+                        // 可以在这里添加完成后的处理逻辑
+                      }}
+                      onProgress={(progress) => {
+                        console.log('批量处理进度:', progress);
+                        // 可以在这里添加进度更新的处理逻辑
+                      }}
+                    />
+                  </motion.div>
                 </div>
-                
-                <BatchProcessor
-                  files={selectedFiles}
-                  fileMap={fileMap}
-                  overlaySettings={overlaySettings}
-                  frameSettings={frameSettings}
-                  onComplete={(results) => {
-                    console.log('批量处理完成:', results);
-                    // 可以在这里添加完成后的处理逻辑
-                  }}
-                  onProgress={(progress) => {
-                    console.log('批量处理进度:', progress);
-                    // 可以在这里添加进度更新的处理逻辑
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Toast Notifications */}
+        <ToastContainer 
+          toasts={toasts} 
+          onClose={removeToast} 
+          position="top-right" 
+        />
       </div>
     </ConfigProvider>
   );

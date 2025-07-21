@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -40,8 +41,10 @@ export const Button: React.FC<ButtonProps> = ({
     lg: "px-6 py-3 text-base",
   };
 
+  const { onAnimationStart, onAnimationEnd, onDrag, onDragStart, onDragEnd, ...restProps } = props;
+  
   return (
-    <button
+    <motion.button
       className={cn(
         baseClasses,
         variantClasses[variant],
@@ -49,16 +52,38 @@ export const Button: React.FC<ButtonProps> = ({
         className
       )}
       disabled={disabled || loading}
-      {...props}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      {...restProps}
     >
       {loading && (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        </motion.div>
       )}
       {!loading && icon && (
-        <span className="mr-2">{icon}</span>
+        <motion.span 
+          className="mr-2"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {icon}
+        </motion.span>
       )}
-      {children}
-    </button>
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.1 }}
+      >
+        {children}
+      </motion.span>
+    </motion.button>
   );
 };
 
