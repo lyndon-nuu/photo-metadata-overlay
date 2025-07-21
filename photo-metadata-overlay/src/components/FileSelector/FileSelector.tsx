@@ -16,7 +16,7 @@ interface FileSelectorProps extends Omit<FileDropzoneProps, 'onFilesSelected'> {
 
 export const FileSelector: React.FC<FileSelectorProps> = ({
   onFilesSelected,
-  onFilesProcessed,
+
   selectedFiles = [],
   onFileRemove,
   accept = SUPPORTED_FILE_EXTENSIONS,

@@ -66,7 +66,7 @@ class MockCanvas extends HTMLCanvasElement {
   width = 800;
   height = 600;
   
-  getContext() {
+  getContext(): any {
     return {
       clearRect: vi.fn(),
       drawImage: vi.fn(),
@@ -118,7 +118,7 @@ document.createElement = vi.fn((tagName: string) => {
   if (tagName === 'canvas') {
     const canvas = originalCreateElement('canvas');
     // Add our mock methods to the real canvas element
-    canvas.getContext = vi.fn(() => ({
+    (canvas as any).getContext = vi.fn(() => ({
       clearRect: vi.fn(),
       drawImage: vi.fn(),
       fillRect: vi.fn(),
@@ -167,7 +167,7 @@ Object.defineProperty(globalThis, 'performance', {
 
 // Mock btoa for base64 encoding
 Object.defineProperty(globalThis, 'btoa', {
-  value: vi.fn((str: string) => Buffer.from(str).toString('base64')),
+  value: vi.fn((str: string) => btoa(str)),
 });
 
 // Mock File constructor
@@ -180,7 +180,16 @@ Object.defineProperty(globalThis, 'File', {
 
     constructor(bits: BlobPart[], name: string, options?: FilePropertyBag) {
       this.name = name;
-      this.size = bits.reduce((acc, bit) => acc + (typeof bit === 'string' ? bit.length : bit.byteLength || 0), 0);
+      this.size = bits.reduce((acc, bit) => {
+        if (typeof bit === 'string') {
+          return acc + bit.length;
+        } else if (bit instanceof ArrayBuffer) {
+          return acc + bit.byteLength;
+        } else if (bit instanceof Uint8Array) {
+          return acc + bit.byteLength;
+        }
+        return acc;
+      }, 0);
       this.type = options?.type || '';
       this.lastModified = options?.lastModified || Date.now();
     }

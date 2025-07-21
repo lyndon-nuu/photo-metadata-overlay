@@ -34,7 +34,7 @@ class MockImage {
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
   
-  set src(value: string) {
+  set src(_value: string) {
     setTimeout(() => {
       if (this.onload) {
         this.onload();
@@ -73,7 +73,7 @@ describe('useImagePreview', () => {
     });
 
     // Mock btoa
-    global.btoa = vi.fn((str: string) => Buffer.from(str).toString('base64'));
+    global.btoa = vi.fn((str: string) => btoa(str));
 
     // Mock performance
     Object.defineProperty(global, 'performance', {
@@ -182,7 +182,7 @@ describe('useImagePreview', () => {
     vi.mocked(imageProcessingService.applyFrame).mockResolvedValue(mockCanvas as any);
     vi.mocked(imageProcessingService.exportImage).mockResolvedValue(mockBlob);
 
-    const { result, rerender } = renderHook(
+    const { rerender } = renderHook(
       ({ settings }) => useImagePreview(mockMetadata, mockFile, settings, frameSettings),
       { initialProps: { settings: overlaySettings } }
     );

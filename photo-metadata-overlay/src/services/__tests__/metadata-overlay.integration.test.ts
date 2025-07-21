@@ -28,27 +28,27 @@ class MockCanvas {
       createLinearGradient: vi.fn(() => ({
         addColorStop: vi.fn(),
       })),
-      set fillStyle(value: string) {},
-      set strokeStyle(value: string) {},
-      set font(value: string) {},
-      set textBaseline(value: string) {},
-      set globalAlpha(value: number) {},
-      set lineWidth(value: number) {},
-      set shadowColor(value: string) {},
-      set shadowBlur(value: number) {},
-      set shadowOffsetX(value: number) {},
-      set shadowOffsetY(value: number) {},
-      set imageSmoothingEnabled(value: boolean) {},
-      set imageSmoothingQuality(value: string) {},
+      set fillStyle(_value: string) {},
+      set strokeStyle(_value: string) {},
+      set font(_value: string) {},
+      set textBaseline(_value: string) {},
+      set globalAlpha(_value: number) {},
+      set lineWidth(_value: number) {},
+      set shadowColor(_value: string) {},
+      set shadowBlur(_value: number) {},
+      set shadowOffsetX(_value: number) {},
+      set shadowOffsetY(_value: number) {},
+      set imageSmoothingEnabled(_value: boolean) {},
+      set imageSmoothingQuality(_value: string) {},
     };
   }
 
-  toBlob(callback: (blob: Blob | null) => void, type?: string, quality?: number) {
+  toBlob(callback: (blob: Blob | null) => void, type?: string, _quality?: number) {
     const mockBlob = new Blob(['mock image data'], { type: type || 'image/png' });
     setTimeout(() => callback(mockBlob), 0);
   }
 
-  toDataURL(type?: string) {
+  toDataURL(_type?: string) {
     return 'data:image/png;base64,mock-canvas-data';
   }
 }
@@ -60,7 +60,7 @@ class MockImage {
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
   
-  set src(value: string) {
+  set src(_value: string) {
     setTimeout(() => {
       if (this.onload) {
         this.onload();
@@ -77,7 +77,7 @@ const mockURL = {
 
 describe('Metadata Overlay Integration Tests', () => {
   let service: ImageProcessingServiceImpl;
-  let mockFile: File;
+  // let mockFile: File;
   let mockMetadata: PhotoMetadata;
 
   beforeEach(() => {
@@ -102,12 +102,12 @@ describe('Metadata Overlay Integration Tests', () => {
     });
 
     // Mock btoa for base64 encoding
-    global.btoa = vi.fn((str: string) => Buffer.from(str).toString('base64'));
+    global.btoa = vi.fn((str: string) => btoa(str));
 
     service = new ImageProcessingServiceImpl();
 
     // 创建测试数据
-    mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
+    // mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
     
     mockMetadata = {
       fileName: 'test.jpg',

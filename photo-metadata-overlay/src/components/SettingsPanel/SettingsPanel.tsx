@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Image, Frame, Palette } from 'lucide-react';
+import { Settings, Image, Frame } from 'lucide-react';
 import { OverlaySettings, FrameSettings } from '../../types';
 import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from '../../constants/design-tokens';
 import { cn } from '../../utils/cn';
@@ -24,7 +24,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   frameSettings,
   onOverlayChange,
   onFrameChange,
-  disabled = false,
+  disabled: _disabled = false,
   className,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overlay');

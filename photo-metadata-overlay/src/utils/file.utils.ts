@@ -1,4 +1,4 @@
-import { PhotoMetadata, ExifData, FileError, ErrorCode } from '../types';
+import { PhotoMetadata, FileError } from '../types';
 import { exifService } from '../services/exif.service';
 import { createAppError } from './data-models.utils';
 

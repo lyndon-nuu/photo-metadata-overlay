@@ -1,14 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
-import { PhotoMetadata, FileSelectedEvent, FileError, ProcessingError } from '../types';
+import { PhotoMetadata, FileSelectedEvent, FileError } from '../types';
 import { 
-  fileToPhotoMetadata, 
   batchFileToPhotoMetadata, 
   checkDuplicateFiles,
-  filterSupportedFiles,
-  extractImageFilesFromFolder,
-  generateUniqueFileName
+  filterSupportedFiles
 } from '../utils/file.utils';
-import { createAppError } from '../utils/data-models.utils';
 
 interface UseFileManagerOptions {
   maxFiles?: number;

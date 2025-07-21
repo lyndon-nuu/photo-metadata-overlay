@@ -31,8 +31,8 @@ export interface FileValidationOptions {
 const DEFAULT_VALIDATION_OPTIONS: Required<FileValidationOptions> = {
   maxFileSize: 100 * 1024 * 1024, // 100MB
   minFileSize: 1024, // 1KB
-  allowedExtensions: SUPPORTED_FILE_EXTENSIONS,
-  allowedMimeTypes: SUPPORTED_IMAGE_FORMATS,
+  allowedExtensions: [...SUPPORTED_FILE_EXTENSIONS],
+  allowedMimeTypes: [...SUPPORTED_IMAGE_FORMATS],
   checkImageDimensions: false,
   minWidth: 1,
   minHeight: 1,

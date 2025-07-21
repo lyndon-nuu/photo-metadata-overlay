@@ -15,16 +15,16 @@ class MockCanvas {
       fillRect: vi.fn(),
       strokeRect: vi.fn(),
       fillText: vi.fn(),
-      set fillStyle(value: string) {},
-      set strokeStyle(value: string) {},
-      set font(value: string) {},
-      set textAlign(value: string) {},
-      set textBaseline(value: string) {},
-      set lineWidth(value: number) {},
+      set fillStyle(_value: string) {},
+      set strokeStyle(_value: string) {},
+      set font(_value: string) {},
+      set textAlign(_value: string) {},
+      set textBaseline(_value: string) {},
+      set lineWidth(_value: number) {},
     };
   }
 
-  toDataURL(type?: string) {
+  toDataURL(_type?: string) {
     return 'data:image/png;base64,mock-canvas-data';
   }
 }
@@ -48,7 +48,7 @@ describe('BrandLogoService', () => {
     });
 
     // Mock btoa
-    global.btoa = vi.fn((str: string) => Buffer.from(str).toString('base64'));
+    global.btoa = vi.fn((str: string) => btoa(str));
     
     vi.clearAllMocks();
   });

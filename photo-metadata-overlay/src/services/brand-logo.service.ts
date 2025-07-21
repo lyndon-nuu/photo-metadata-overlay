@@ -210,7 +210,7 @@ export class BrandLogoServiceImpl implements BrandLogoService {
    */
   private async loadCdnLogo(brandName: string): Promise<string | null> {
     // 在测试环境中跳过CDN加载
-    if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
+    if (typeof window === 'undefined' || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
       return null;
     }
 

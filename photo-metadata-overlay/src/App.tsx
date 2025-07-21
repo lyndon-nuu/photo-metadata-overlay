@@ -1,17 +1,21 @@
 import { ConfigProvider } from 'antd';
-import { useState } from 'react';
-import { useAppStore } from './stores';
+import { useState, useEffect } from 'react';
+import { useAppStore, useSettingsStore } from './stores';
 import { FileSelector } from './components/FileSelector/FileSelector';
 import { FileManager } from './components/FileManager/FileManager';
 import { ImagePreview } from './components/ImagePreview/ImagePreview';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
+import { SettingsManager } from './components/SettingsManager/SettingsManager';
 import { useFileManager } from './hooks/useFileManager';
+import { useAutoSave } from './hooks/useAutoSave';
 import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings } from './types';
 import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from './constants/design-tokens';
+import { storageService } from './services/storage.service';
 import './App.css';
 
 function App() {
   const { isLoading, error } = useAppStore();
+  const { loadSettings } = useSettingsStore();
   
   // State for preview functionality
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoMetadata | null>(null);
@@ -19,9 +23,38 @@ function App() {
   const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>(DEFAULT_OVERLAY_SETTINGS);
   const [frameSettings, setFrameSettings] = useState<FrameSettings>(DEFAULT_FRAME_SETTINGS);
   const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
+  const [showSettingsManager, setShowSettingsManager] = useState(false);
   
   // Map to store original File objects by filename
   const [fileMap, setFileMap] = useState<Map<string, File>>(new Map());
+
+  // 自动保存Hook
+  const { isAutoSaveEnabled } = useAutoSave(overlaySettings, frameSettings);
+
+  // 初始化时加载设置
+  useEffect(() => {
+    const initializeSettings = async () => {
+      try {
+        // 加载用户设置
+        await loadSettings();
+        
+        // 加载叠加和相框设置
+        const [savedOverlaySettings, savedFrameSettings] = await Promise.all([
+          storageService.loadOverlaySettings(),
+          storageService.loadFrameSettings(),
+        ]);
+        
+        setOverlaySettings(savedOverlaySettings);
+        setFrameSettings(savedFrameSettings);
+        
+        console.log('应用设置已加载');
+      } catch (error) {
+        console.error('加载设置失败:', error);
+      }
+    };
+
+    initializeSettings();
+  }, [loadSettings]);
   
   const {
     selectedFiles,
@@ -110,7 +143,18 @@ function App() {
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
-                <button className="btn-secondary">设置</button>
+                <button 
+                  className="btn-secondary"
+                  onClick={() => setShowSettingsManager(true)}
+                >
+                  设置
+                </button>
+                {isAutoSaveEnabled && (
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>自动保存</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -288,6 +332,15 @@ function App() {
             </div>
           </div>
         </main>
+
+        {/* Settings Manager Modal */}
+        {showSettingsManager && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <SettingsManager onClose={() => setShowSettingsManager(false)} />
+            </div>
+          </div>
+        )}
       </div>
     </ConfigProvider>
   );

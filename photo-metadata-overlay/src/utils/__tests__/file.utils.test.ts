@@ -4,7 +4,7 @@ import {
   batchFileToPhotoMetadata,
   getImageDimensions,
   generateFileHash,
-  checkDuplicateFiles,
+
   filterSupportedFiles,
   formatFileSize,
   getFileExtension,
@@ -52,7 +52,7 @@ class MockImage {
   naturalWidth = 1920;
   naturalHeight = 1080;
   
-  set src(value: string) {
+  set src(_value: string) {
     // Simulate successful image load
     setTimeout(() => {
       if (this.onload) {
@@ -170,7 +170,7 @@ describe('File Utils', () => {
       // Mock Image to simulate error
       const OriginalImage = global.Image;
       class ErrorImage extends MockImage {
-        set src(value: string) {
+        set src(_value: string) {
           setTimeout(() => {
             if (this.onerror) {
               this.onerror();
@@ -242,7 +242,7 @@ describe('File Utils', () => {
       });
 
       // Mock generateFileHash to return predictable values
-      const originalGenerateFileHash = generateFileHash;
+      // const originalGenerateFileHash = generateFileHash;
       const mockGenerateFileHash = vi.fn()
         .mockResolvedValueOnce('test-hash-123') // This matches existing file
         .mockResolvedValueOnce('different-hash'); // This is unique

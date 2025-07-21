@@ -39,7 +39,7 @@ export function useImagePreview(
     canvas: null,
   });
 
-  const debounceTimerRef = useRef<number>();
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
   const cacheRef = useRef<Map<string, { blob: Blob; canvas: HTMLCanvasElement }>>(new Map());
   const processingRef = useRef<boolean>(false);
 

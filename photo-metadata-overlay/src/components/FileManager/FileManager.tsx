@@ -44,7 +44,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sortBy, setSortBy] = useState<SortBy>('name');
-  const [filterBy, setFilterBy] = useState<FilterBy>('all');
+  const [_filterBy] = useState<FilterBy>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 

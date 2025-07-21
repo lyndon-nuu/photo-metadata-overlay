@@ -123,7 +123,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
     input.type = 'file';
     input.accept = accept.join(',');
     input.multiple = multiple;
-    input.onchange = handleFileSelect;
+    input.onchange = (e) => handleFileSelect(e as unknown as React.ChangeEvent<HTMLInputElement>);
     input.click();
   }, [disabled, accept, multiple, handleFileSelect]);
 

@@ -218,17 +218,22 @@ export const useFrameStore = create<FrameStore>((set, get) => ({
 // Settings store
 interface SettingsStore {
   settings: UserSettings;
+  isLoading: boolean;
+  error: string | null;
 
   // Actions
-  updateSettings: (updates: Partial<UserSettings>) => void;
-  resetSettings: () => void;
+  updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
+  resetSettings: () => Promise<void>;
   loadSettings: () => Promise<void>;
   saveSettings: () => Promise<void>;
+  exportSettings: () => Promise<string>;
+  importSettings: (data: string) => Promise<void>;
+  resetAllSettings: () => Promise<void>;
 }
 
 const DEFAULT_SETTINGS: UserSettings = {
   theme: 'auto',
-  language: 'en',
+  language: 'zh-CN',
   defaultExportFormat: 'jpeg',
   defaultExportQuality: 0.9,
   autoSave: true,
@@ -243,23 +248,145 @@ const DEFAULT_SETTINGS: UserSettings = {
   },
 };
 
-export const useSettingsStore = create<SettingsStore>(set => ({
+export const useSettingsStore = create<SettingsStore>((set, get) => ({
   settings: DEFAULT_SETTINGS,
+  isLoading: false,
+  error: null,
 
-  updateSettings: updates =>
-    set(state => ({
-      settings: { ...state.settings, ...updates },
-    })),
+  updateSettings: async (updates: Partial<UserSettings>) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const newSettings = { ...get().settings, ...updates };
+      set({ settings: newSettings });
+      
+      // 导入存储服务
+      const { storageService } = await import('../services/storage.service');
+      await storageService.saveSettings(newSettings);
+      
+      console.log('设置已更新并保存');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '保存设置失败';
+      set({ error: errorMessage });
+      console.error('更新设置失败:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
-  resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
+  resetSettings: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      set({ settings: DEFAULT_SETTINGS });
+      
+      const { storageService } = await import('../services/storage.service');
+      await storageService.saveSettings(DEFAULT_SETTINGS);
+      
+      console.log('设置已重置');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '重置设置失败';
+      set({ error: errorMessage });
+      console.error('重置设置失败:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   loadSettings: async () => {
-    // TODO: Implement loading from Tauri storage
-    console.log('Loading settings...');
+    try {
+      set({ isLoading: true, error: null });
+      
+      const { storageService } = await import('../services/storage.service');
+      const settings = await storageService.loadSettings();
+      set({ settings });
+      
+      console.log('设置已加载');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '加载设置失败';
+      set({ error: errorMessage });
+      console.error('加载设置失败:', error);
+      // 使用默认设置作为后备
+      set({ settings: DEFAULT_SETTINGS });
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
   saveSettings: async () => {
-    // TODO: Implement saving to Tauri storage
-    console.log('Saving settings...');
+    try {
+      set({ isLoading: true, error: null });
+      
+      const { storageService } = await import('../services/storage.service');
+      await storageService.saveSettings(get().settings);
+      
+      console.log('设置已保存');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '保存设置失败';
+      set({ error: errorMessage });
+      console.error('保存设置失败:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  exportSettings: async (): Promise<string> => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const { storageService } = await import('../services/storage.service');
+      const exportData = await storageService.exportSettings();
+      
+      console.log('设置已导出');
+      return exportData;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '导出设置失败';
+      set({ error: errorMessage });
+      console.error('导出设置失败:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  importSettings: async (data: string) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const { storageService } = await import('../services/storage.service');
+      await storageService.importSettings(data);
+      
+      // 重新加载设置
+      const settings = await storageService.loadSettings();
+      set({ settings });
+      
+      console.log('设置已导入');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '导入设置失败';
+      set({ error: errorMessage });
+      console.error('导入设置失败:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  resetAllSettings: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const { storageService } = await import('../services/storage.service');
+      await storageService.resetAllSettings();
+      
+      // 重置到默认设置
+      set({ settings: DEFAULT_SETTINGS });
+      
+      console.log('所有设置已重置');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '重置所有设置失败';
+      set({ error: errorMessage });
+      console.error('重置所有设置失败:', error);
+    } finally {
+      set({ isLoading: false });
+    }
   },
 }));

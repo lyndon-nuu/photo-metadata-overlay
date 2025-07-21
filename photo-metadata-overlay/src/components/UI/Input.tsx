@@ -27,7 +27,7 @@ export const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const [showPassword, setShowPassword] = React.useState(false);
-  const [isFocused, setIsFocused] = React.useState(false);
+  const [, setIsFocused] = React.useState(false);
 
   const isPassword = type === 'password';
   const inputType = isPassword && showPassword ? 'text' : type;
