@@ -6,6 +6,7 @@ import { FileManager } from './components/FileManager/FileManager';
 import { ImagePreview } from './components/ImagePreview/ImagePreview';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { SettingsManager } from './components/SettingsManager/SettingsManager';
+import { BatchProcessor } from './components/BatchProcessor/BatchProcessor';
 import { useFileManager } from './hooks/useFileManager';
 import { useAutoSave } from './hooks/useAutoSave';
 import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings } from './types';
@@ -24,6 +25,7 @@ function App() {
   const [frameSettings, setFrameSettings] = useState<FrameSettings>(DEFAULT_FRAME_SETTINGS);
   const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
   const [showSettingsManager, setShowSettingsManager] = useState(false);
+  const [showBatchProcessor, setShowBatchProcessor] = useState(false);
   
   // Map to store original File objects by filename
   const [fileMap, setFileMap] = useState<Map<string, File>>(new Map());
@@ -143,6 +145,13 @@ function App() {
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
+                <button 
+                  className="btn-primary"
+                  onClick={() => setShowBatchProcessor(true)}
+                  disabled={selectedFiles.length === 0}
+                >
+                  批量处理 ({selectedFiles.length})
+                </button>
                 <button 
                   className="btn-secondary"
                   onClick={() => setShowSettingsManager(true)}
@@ -338,6 +347,44 @@ function App() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <SettingsManager onClose={() => setShowSettingsManager(false)} />
+            </div>
+          </div>
+        )}
+
+        {/* Batch Processor Modal */}
+        {showBatchProcessor && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    批量处理
+                  </h2>
+                  <button
+                    onClick={() => setShowBatchProcessor(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <BatchProcessor
+                  files={selectedFiles}
+                  fileMap={fileMap}
+                  overlaySettings={overlaySettings}
+                  frameSettings={frameSettings}
+                  onComplete={(results) => {
+                    console.log('批量处理完成:', results);
+                    // 可以在这里添加完成后的处理逻辑
+                  }}
+                  onProgress={(progress) => {
+                    console.log('批量处理进度:', progress);
+                    // 可以在这里添加进度更新的处理逻辑
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
