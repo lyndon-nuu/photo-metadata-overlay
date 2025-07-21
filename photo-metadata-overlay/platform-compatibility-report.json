@@ -1,0 +1,152 @@
+{
+  "timestamp": "2025-07-21T04:11:04.604Z",
+  "platform": {
+    "os": "linux",
+    "arch": "x64",
+    "version": "6.12.33-amd64-desktop-rolling",
+    "node": "v22.17.0"
+  },
+  "summary": {
+    "total": 27,
+    "passed": 23,
+    "failed": 0,
+    "warnings": 4
+  },
+  "tests": [
+    {
+      "name": "路径分隔符处理",
+      "status": "pass",
+      "message": "路径正确解析"
+    },
+    {
+      "name": "文件名大小写",
+      "status": "pass",
+      "message": "文件名处理正确"
+    },
+    {
+      "name": "长文件名支持",
+      "status": "pass",
+      "message": "支持长文件名"
+    },
+    {
+      "name": "CSS前缀 (src/App.css)",
+      "status": "pass",
+      "message": "无浏览器特定前缀"
+    },
+    {
+      "name": "字体兼容性 (src/App.css)",
+      "status": "pass",
+      "message": "使用系统字体"
+    },
+    {
+      "name": "CSS前缀 (tailwind.config.js)",
+      "status": "pass",
+      "message": "无浏览器特定前缀"
+    },
+    {
+      "name": "图标资源 (icon.ico)",
+      "status": "pass",
+      "message": "图标存在"
+    },
+    {
+      "name": "图标资源 (icon.icns)",
+      "status": "pass",
+      "message": "图标存在"
+    },
+    {
+      "name": "图标资源 (32x32.png)",
+      "status": "pass",
+      "message": "图标存在"
+    },
+    {
+      "name": "图标资源 (128x128.png)",
+      "status": "pass",
+      "message": "图标存在"
+    },
+    {
+      "name": "关键依赖 (@tauri-apps/api)",
+      "status": "pass",
+      "message": "版本: ^2"
+    },
+    {
+      "name": "关键依赖 (@tauri-apps/cli)",
+      "status": "pass",
+      "message": "版本: ^2"
+    },
+    {
+      "name": "关键依赖 (react)",
+      "status": "pass",
+      "message": "版本: ^18.3.1"
+    },
+    {
+      "name": "关键依赖 (react-dom)",
+      "status": "pass",
+      "message": "版本: ^18.3.1"
+    },
+    {
+      "name": "关键依赖 (typescript)",
+      "status": "pass",
+      "message": "版本: ~5.6.2"
+    },
+    {
+      "name": "关键依赖 (vite)",
+      "status": "pass",
+      "message": "版本: ^6.0.3"
+    },
+    {
+      "name": "构建目标",
+      "status": "pass",
+      "message": "配置为构建所有平台"
+    },
+    {
+      "name": "windows配置",
+      "status": "pass",
+      "message": "存在平台特定配置"
+    },
+    {
+      "name": "macOS配置",
+      "status": "pass",
+      "message": "存在平台特定配置"
+    },
+    {
+      "name": "linux配置",
+      "status": "pass",
+      "message": "存在平台特定配置"
+    },
+    {
+      "name": "窗口最小尺寸",
+      "status": "pass",
+      "message": "设置了最小窗口尺寸"
+    },
+    {
+      "name": "Vite配置",
+      "status": "pass",
+      "message": "Vite配置文件存在"
+    },
+    {
+      "name": "构建优化",
+      "status": "warning",
+      "message": "未配置构建优化"
+    },
+    {
+      "name": "包大小限制",
+      "status": "warning",
+      "message": "未配置包大小限制"
+    },
+    {
+      "name": "图片资源",
+      "status": "pass",
+      "message": "发现 2 个图片文件"
+    },
+    {
+      "name": "CSP配置",
+      "status": "warning",
+      "message": "未配置内容安全策略"
+    },
+    {
+      "name": "权限配置",
+      "status": "warning",
+      "message": "未明确配置API权限"
+    }
+  ]
+}

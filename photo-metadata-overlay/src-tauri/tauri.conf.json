@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "photo-metadata-overlay",
+  "productName": "Photo Metadata Overlay",
   "version": "0.1.0",
-  "identifier": "com.photo-metadata-overlay.app",
+  "identifier": "com.photometadataoverlay.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,14 +12,28 @@
   "app": {
     "windows": [
       {
-        "title": "photo-metadata-overlay",
-        "width": 800,
-        "height": 600
+        "title": "Photo Metadata Overlay",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true,
+        "center": true,
+        "fullscreen": false,
+        "alwaysOnTop": false,
+        "decorations": true,
+        "transparent": false,
+        "skipTaskbar": false,
+        "theme": "Light"
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
@@ -30,6 +44,32 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Photo Metadata Overlay Team",
+    "copyright": "Copyright © 2024 Photo Metadata Overlay Team. All rights reserved.",
+    "category": "Photography",
+    "shortDescription": "Add metadata overlays to your photos with ease",
+    "longDescription": "Photo Metadata Overlay is a powerful desktop application that allows you to add customizable metadata overlays to your photos. Features include EXIF data extraction, brand logo integration, custom frames, and batch processing capabilities.",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "tsp": false
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.0-37", "libgtk-3-0", "libayatana-appindicator3-1"],
+        "section": "graphics",
+        "priority": "optional"
+      }
+    }
   }
 }

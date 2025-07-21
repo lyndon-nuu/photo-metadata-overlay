@@ -15,7 +15,17 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build:all": "node scripts/build-all-platforms.cjs all",
+    "build:windows": "node scripts/build-all-platforms.cjs windows",
+    "build:macos": "node scripts/build-all-platforms.cjs macos",
+    "build:macos-arm": "node scripts/build-all-platforms.cjs macos-arm",
+    "build:linux": "node scripts/build-all-platforms.cjs linux",
+    "build:current": "node scripts/build-all-platforms.cjs",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:info": "tauri info",
+    "release": "npm run build && npm run tauri:build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
