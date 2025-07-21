@@ -418,6 +418,68 @@ export class StorageServiceImpl implements StorageService {
       },
     };
   }
+
+  /**
+   * 保存通用数据
+   */
+  async saveData(key: string, data: any): Promise<void> {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(data));
+        return;
+      }
+      console.log(`数据已保存: ${key}`);
+    } catch (error) {
+      console.error(`保存数据失败 (${key}):`, error);
+      throw new Error(`无法保存数据: ${key}`);
+    }
+  }
+
+  /**
+   * 加载通用数据
+   */
+  async loadData(key: string, defaultValue: any = null): Promise<any> {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(key);
+        return stored ? JSON.parse(stored) : defaultValue;
+      }
+      return defaultValue;
+    } catch (error) {
+      console.error(`加载数据失败 (${key}):`, error);
+      return defaultValue;
+    }
+  }
+
+  /**
+   * 删除数据
+   */
+  async removeData(key: string): Promise<void> {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(key);
+        return;
+      }
+      console.log(`数据已删除: ${key}`);
+    } catch (error) {
+      console.error(`删除数据失败 (${key}):`, error);
+      throw new Error(`无法删除数据: ${key}`);
+    }
+  }
+
+  /**
+   * 检查存储是否可用
+   */
+  async isAvailable(): Promise<boolean> {
+    try {
+      if (typeof window !== 'undefined') {
+        return typeof localStorage !== 'undefined';
+      }
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
 }
 
 // 导出单例实例

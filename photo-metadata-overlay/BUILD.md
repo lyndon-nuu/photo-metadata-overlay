@@ -1,253 +1,363 @@
-# 跨平台构建指南
+# 构建和部署指南
 
-本文档介绍如何为不同平台构建 Photo Metadata Overlay 应用程序。
+## 开发环境设置
 
-## 系统要求
-
-### 通用要求
+### 前置要求
 - Node.js 18+ 
-- npm 或 yarn
-- Rust 工具链 (rustc, cargo)
-- Tauri CLI
+- Rust 1.70+
+- Git
 
-### 平台特定要求
-
-#### Windows
-- Visual Studio Build Tools 2019/2022
-- Windows 10 SDK
-
-#### macOS
-- Xcode Command Line Tools
-- macOS 10.13+ (构建目标)
-
-#### Linux
-- 构建工具包：`build-essential`
-- GTK 开发库：`libgtk-3-dev`
-- WebKit 开发库：`libwebkit2gtk-4.0-dev`
-- 应用指示器库：`libayatana-appindicator3-dev`
-- SVG 库：`librsvg2-dev`
-
-## 快速开始
-
-### 1. 安装依赖
-
+### 安装依赖
 ```bash
+# 克隆项目
+git clone <repository-url>
+cd photo-metadata-overlay
+
 # 安装前端依赖
 npm install
 
-# 安装 Tauri CLI (如果尚未安装)
-cargo install tauri-cli
+# 安装Tauri CLI
+npm install -g @tauri-apps/cli
+
+# 验证Rust环境
+rustc --version
+cargo --version
 ```
-
-### 2. 构建当前平台
-
-```bash
-# 使用自定义构建脚本
-npm run build:current
-
-# 或使用 Tauri CLI
-npm run tauri:build
-```
-
-## 跨平台构建
-
-### 构建所有支持的平台
-
-```bash
-npm run build:all
-```
-
-### 构建特定平台
-
-```bash
-# Windows (x64)
-npm run build:windows
-
-# macOS (Intel)
-npm run build:macos
-
-# macOS (Apple Silicon)
-npm run build:macos-arm
-
-# Linux (x64)
-npm run build:linux
-```
-
-## 构建产物
-
-构建完成后，产物将位于 `src-tauri/target/release/bundle/` 目录下：
-
-### Windows
-- `msi/` - Windows Installer (.msi)
-- `nsis/` - NSIS Installer (.exe)
-
-### macOS
-- `dmg/` - macOS Disk Image (.dmg)
-- `macos/` - macOS Application Bundle (.app)
-
-### Linux
-- `deb/` - Debian Package (.deb)
-- `appimage/` - AppImage (.AppImage)
-- `rpm/` - RPM Package (.rpm)
-
-## 平台兼容性测试
-
-在构建之前，建议运行兼容性测试：
-
-```bash
-node scripts/test-platform-compatibility.js
-```
-
-测试将检查：
-- 文件系统兼容性
-- UI 组件兼容性
-- 依赖兼容性
-- 构建配置兼容性
-- 性能配置
-- 安全配置
 
 ## 开发模式
 
+### 启动开发服务器
 ```bash
-# 启动开发服务器
-npm run dev
+# 启动前端开发服务器和Tauri开发模式
+npm run tauri dev
 
-# 启动 Tauri 开发模式
-npm run tauri:dev
+# 或者分别启动
+npm run dev          # 仅前端
+npm run tauri build  # 仅构建
 ```
+
+### 开发工具
+- 前端热重载：自动刷新
+- Rust热重载：需要重新编译
+- 开发者工具：F12打开
+
+## 构建生产版本
+
+### 单平台构建
+```bash
+# 构建当前平台
+npm run tauri build
+
+# 构建特定平台（需要对应环境）
+npm run tauri build -- --target x86_64-pc-windows-msvc  # Windows
+npm run tauri build -- --target x86_64-apple-darwin     # macOS Intel
+npm run tauri build -- --target aarch64-apple-darwin    # macOS Apple Silicon
+npm run tauri build -- --target x86_64-unknown-linux-gnu # Linux
+```
+
+### 跨平台构建
+```bash
+# 使用GitHub Actions进行跨平台构建
+# 推送到main分支会自动触发构建
+
+# 手动触发构建
+gh workflow run build-release.yml
+```
+
+## 构建配置
+
+### Tauri配置 (`src-tauri/tauri.conf.json`)
+```json
+{
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Photo Metadata Overlay",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "fs": {
+        "all": true,
+        "scope": ["**"]
+      },
+      "dialog": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.phototools.metadata-overlay",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ]
+    }
+  }
+}
+```
+
+### 前端构建配置 (`vite.config.ts`)
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  clearScreen: false,
+  server: {
+    port: 1420,
+    strictPort: true,
+  },
+  envPrefix: ['VITE_', 'TAURI_'],
+  build: {
+    target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
+    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    sourcemap: !!process.env.TAURI_DEBUG,
+  },
+});
+```
+
+## 测试
+
+### 单元测试
+```bash
+# 运行所有测试
+npm test
+
+# 运行特定测试
+npm test -- --grep "component"
+
+# 测试覆盖率
+npm run test:coverage
+```
+
+### 端到端测试
+```bash
+# 运行E2E测试
+npm run test:e2e
+
+# 运行特定E2E测试
+npm run test:e2e -- --spec "batch-processing"
+```
+
+### 性能测试
+```bash
+# 运行性能测试
+npm run test:performance
+
+# 内存泄漏测试
+npm run test:memory
+```
+
+## 代码质量
+
+### 代码检查
+```bash
+# ESLint检查
+npm run lint
+
+# 修复可自动修复的问题
+npm run lint:fix
+
+# TypeScript类型检查
+npm run type-check
+```
+
+### 代码格式化
+```bash
+# Prettier格式化
+npm run format
+
+# 检查格式
+npm run format:check
+```
+
+## 发布流程
+
+### 版本管理
+```bash
+# 更新版本号
+npm version patch  # 1.0.0 -> 1.0.1
+npm version minor  # 1.0.0 -> 1.1.0
+npm version major  # 1.0.0 -> 2.0.0
+
+# 手动更新版本
+# 1. 更新 package.json
+# 2. 更新 src-tauri/Cargo.toml
+# 3. 更新 src-tauri/tauri.conf.json
+```
+
+### 创建发布
+```bash
+# 创建Git标签
+git tag v1.0.0
+git push origin v1.0.0
+
+# GitHub Actions会自动构建和发布
+```
+
+### 手动发布
+```bash
+# 构建所有平台
+npm run build:all
+
+# 上传到发布平台
+# 构建产物位于 src-tauri/target/release/bundle/
+```
+
+## 平台特定说明
+
+### Windows
+- 需要Visual Studio Build Tools
+- 构建产物：`.exe` 和 `.msi`
+- 签名：需要代码签名证书
+
+### macOS
+- 需要Xcode Command Line Tools
+- 构建产物：`.app` 和 `.dmg`
+- 签名：需要Apple Developer证书
+- 公证：需要Apple公证
+
+### Linux
+- 构建产物：`.AppImage` 和 `.deb`
+- 依赖：需要系统库
+
+## 优化建议
+
+### 构建优化
+```bash
+# 启用Rust优化
+export CARGO_PROFILE_RELEASE_LTO=true
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+
+# 前端优化
+npm run build -- --mode production
+```
+
+### 包大小优化
+- 移除未使用的依赖
+- 启用tree-shaking
+- 压缩资源文件
+- 使用动态导入
+
+### 性能优化
+- 启用Rust编译优化
+- 使用Web Workers
+- 实现资源懒加载
+- 优化图像处理算法
 
 ## 故障排除
 
-### 常见问题
+### 常见构建问题
 
-#### 1. Rust 工具链问题
+#### Rust编译错误
 ```bash
-# 更新 Rust
+# 更新Rust工具链
 rustup update
 
-# 添加目标平台
-rustup target add x86_64-pc-windows-msvc
-rustup target add x86_64-apple-darwin
-rustup target add aarch64-apple-darwin
-rustup target add x86_64-unknown-linux-gnu
+# 清理构建缓存
+cargo clean
 ```
 
-#### 2. Linux 依赖问题
+#### 前端构建错误
 ```bash
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
-
-# CentOS/RHEL/Fedora
-sudo yum install gtk3-devel webkit2gtk3-devel libappindicator-gtk3-devel librsvg2-devel
-```
-
-#### 3. macOS 代码签名
-如需发布到 App Store 或进行公证，需要配置代码签名：
-
-```json
-// src-tauri/tauri.conf.json
-{
-  "bundle": {
-    "macOS": {
-      "signingIdentity": "Developer ID Application: Your Name",
-      "entitlements": "path/to/entitlements.plist"
-    }
-  }
-}
-```
-
-#### 4. Windows 代码签名
-```json
-// src-tauri/tauri.conf.json
-{
-  "bundle": {
-    "windows": {
-      "certificateThumbprint": "YOUR_CERTIFICATE_THUMBPRINT",
-      "digestAlgorithm": "sha256",
-      "timestampUrl": "http://timestamp.digicert.com"
-    }
-  }
-}
-```
-
-### 构建脚本选项
-
-自定义构建脚本支持以下选项：
-
-```bash
-# 显示帮助信息
-node scripts/build-all-platforms.js --help
-
-# 跳过依赖检查
-node scripts/build-all-platforms.js --skip-deps
-
-# 详细输出
-node scripts/build-all-platforms.js --verbose
+# 清理node_modules
+rm -rf node_modules package-lock.json
+npm install
 
 # 清理构建缓存
-node scripts/build-all-platforms.js --clean
+npm run clean
 ```
 
-## CI/CD 集成
+#### 跨平台构建问题
+- 检查目标平台工具链
+- 验证交叉编译环境
+- 查看GitHub Actions日志
 
-项目包含 GitHub Actions 工作流，支持：
-- 自动跨平台构建
-- 兼容性测试
-- 自动发布到 GitHub Releases
+### 调试技巧
+- 使用 `console.log` 调试前端
+- 使用 `println!` 调试Rust代码
+- 启用详细日志输出
+- 使用开发者工具
 
-工作流文件位于：`.github/workflows/build-release.yml`
+## CI/CD配置
 
-### 触发构建
-- 推送标签 (如 `v1.0.0`) 将触发发布构建
-- Pull Request 将触发测试构建
-- 手动触发工作流
+### GitHub Actions
+```yaml
+name: Build and Release
 
-## 性能优化
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
 
-### 构建优化
-- 启用 LTO (Link Time Optimization)
-- 优化二进制大小
-- 压缩资源文件
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.platform }}
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build
+        run: npm run tauri build
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.platform }}-build
+          path: src-tauri/target/release/bundle/
+```
 
-### 运行时优化
-- 延迟加载非关键组件
-- 图片资源优化
-- 内存使用优化
+## 部署
 
-## 发布检查清单
+### 自动部署
+- GitHub Releases：自动发布到GitHub
+- 应用商店：需要手动提交审核
 
-在发布新版本之前，请确保：
+### 手动部署
+1. 构建所有平台版本
+2. 测试安装包
+3. 上传到发布平台
+4. 更新发布说明
+5. 通知用户更新
 
-- [ ] 所有平台构建成功
-- [ ] 兼容性测试通过
-- [ ] 功能测试完成
-- [ ] 性能测试通过
-- [ ] 安全扫描完成
-- [ ] 文档更新
-- [ ] 版本号更新
-- [ ] 更新日志编写
+## 监控和分析
 
-## 支持的平台
+### 错误监控
+- 集成错误报告服务
+- 收集崩溃日志
+- 监控性能指标
 
-| 平台 | 架构 | 状态 | 备注 |
-|------|------|------|------|
-| Windows | x64 | ✅ 支持 | Windows 10+ |
-| macOS | Intel | ✅ 支持 | macOS 10.13+ |
-| macOS | Apple Silicon | ✅ 支持 | macOS 11+ |
-| Linux | x64 | ✅ 支持 | Ubuntu 18.04+, CentOS 7+ |
+### 使用分析
+- 匿名使用统计
+- 功能使用频率
+- 性能指标收集
 
-## 许可证
+---
 
-本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
-
-## 贡献
-
-欢迎贡献代码！请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献指南。
-
-## 支持
-
-如果遇到构建问题，请：
-1. 查看本文档的故障排除部分
-2. 搜索现有的 Issues
-3. 创建新的 Issue 并提供详细信息
+更多详细信息请参考官方文档或联系开发团队。

@@ -8,6 +8,11 @@ import { ImagePreview } from './components/ImagePreview/ImagePreview';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { SettingsManager } from './components/SettingsManager/SettingsManager';
 import { BatchProcessor } from './components/BatchProcessor/BatchProcessor';
+import { EnhancedToolbar } from './components/Toolbar/EnhancedToolbar';
+import { KeyboardShortcutManager } from './components/KeyboardShortcutManager';
+import { ShortcutHelp, FloatingShortcutHints } from './components/UI/ShortcutHelp';
+import { SmartPresetSelector } from './components/UI/SmartPresetSelector';
+import { SessionRecoveryDialog } from './components/UI/SessionRecoveryDialog';
 
 import { LoadingSpinner } from './components/UI/LoadingSpinner';
 import { ToastContainer } from './components/UI/Toast';
@@ -15,11 +20,14 @@ import { StatusBar, StatusBarContainer } from './components/StatusBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFileManager } from './hooks/useFileManager';
 import { useAutoSave } from './hooks/useAutoSave';
+import { useUndoRedo } from './hooks/useUndoRedo';
 import { useToast } from './hooks/useToast';
 import { useAppStatus } from './hooks/useAppStatus';
 import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings } from './types';
 import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from './constants/design-tokens';
 import { storageService } from './services/storage.service';
+import { templateService, PresetTemplate } from './services/template.service';
+import { appInitializer } from './utils/app-initializer';
 import './App.css';
 
 // 添加演示模式检查
@@ -43,11 +51,26 @@ function App() {
   const [showSettingsManager, setShowSettingsManager] = useState(false);
   const [showBatchProcessor, setShowBatchProcessor] = useState(false);
   
+  // 用户体验增强功能状态
+  const [showPresetSelector, setShowPresetSelector] = useState(false);
+  const [showSessionRecovery, setShowSessionRecovery] = useState(false);
+  const [recoveryProgress, setRecoveryProgress] = useState<any>(null);
+  
   // Map to store original File objects by filename
   const [fileMap, setFileMap] = useState<Map<string, File>>(new Map());
 
   // 自动保存Hook
-  const { isAutoSaveEnabled } = useAutoSave(overlaySettings, frameSettings);
+  const { loadWorkProgress, clearWorkProgress } = useAutoSave(overlaySettings, frameSettings);
+  
+  // 撤销重做Hook
+  const undoRedo = useUndoRedo({
+    maxHistorySize: 50,
+    initialState: { overlaySettings, frameSettings },
+    onStateChange: (state) => {
+      setOverlaySettings(state.overlaySettings);
+      setFrameSettings(state.frameSettings);
+    },
+  });
   
   // Toast通知Hook
   const { toasts, removeToast, success } = useToast();
@@ -61,10 +84,15 @@ function App() {
     setIdle
   } = useAppStatus();
 
-  // 初始化时加载设置
+  // 初始化应用程序和加载设置
   useEffect(() => {
-    const initializeSettings = async () => {
+    const initializeApp = async () => {
       try {
+        setLoading('正在初始化应用程序...');
+        
+        // 初始化应用程序
+        await appInitializer.initialize();
+        
         // 加载用户设置
         await loadSettings();
         
@@ -77,14 +105,23 @@ function App() {
         setOverlaySettings(savedOverlaySettings);
         setFrameSettings(savedFrameSettings);
         
-        console.log('应用设置已加载');
+        // 检查是否有未完成的工作会话
+        const workProgress = await loadWorkProgress();
+        if (workProgress) {
+          setRecoveryProgress(workProgress);
+          setShowSessionRecovery(true);
+        }
+        
+        setSuccess('应用程序初始化完成');
+        console.log('应用程序初始化完成');
       } catch (error) {
-        console.error('加载设置失败:', error);
+        console.error('应用程序初始化失败:', error);
+        setError('应用程序初始化失败，请刷新页面重试');
       }
     };
 
-    initializeSettings();
-  }, [loadSettings]);
+    initializeApp();
+  }, [loadSettings, loadWorkProgress, setLoading, setSuccess, setError]);
   
   const {
     selectedFiles,
@@ -170,6 +207,69 @@ function App() {
     success('图像处理完成', '图像已成功处理，可以下载了');
   };
 
+  // 用户体验功能处理函数
+  const handleUndo = () => {
+    undoRedo.undo();
+    success('撤销成功', '已撤销上一步操作');
+  };
+
+  const handleRedo = () => {
+    undoRedo.redo();
+    success('重做成功', '已重做操作');
+  };
+
+  const handleApplyPreset = async (preset: PresetTemplate) => {
+    try {
+      setOverlaySettings(preset.overlaySettings);
+      setFrameSettings(preset.frameSettings);
+      
+      // 记录到撤销重做历史
+      undoRedo.pushState(
+        { overlaySettings: preset.overlaySettings, frameSettings: preset.frameSettings },
+        'apply-preset',
+        `应用预设: ${preset.name}`
+      );
+      
+      // 记录模板使用
+      await templateService.recordTemplateUsage(preset.id);
+      
+      setShowPresetSelector(false);
+      success('预设应用成功', `已应用预设: ${preset.name}`);
+    } catch (error) {
+      console.error('应用预设失败:', error);
+      setError('应用预设失败，请重试');
+    }
+  };
+
+  const handleRestoreSession = () => {
+    if (recoveryProgress) {
+      // 恢复状态
+      if (recoveryProgress.overlaySettings) {
+        setOverlaySettings(recoveryProgress.overlaySettings);
+      }
+      if (recoveryProgress.frameSettings) {
+        setFrameSettings(recoveryProgress.frameSettings);
+      }
+      if (recoveryProgress.currentPhoto) {
+        setSelectedPhoto(recoveryProgress.currentPhoto);
+      }
+      if (recoveryProgress.selectedFiles.length > 0) {
+        // 这里需要根据实际情况恢复文件列表
+        console.log('恢复文件列表:', recoveryProgress.selectedFiles);
+      }
+
+      setShowSessionRecovery(false);
+      setRecoveryProgress(null);
+      success('会话恢复成功', '已恢复上次的工作进度');
+    }
+  };
+
+  const handleDiscardSession = () => {
+    clearWorkProgress();
+    setShowSessionRecovery(false);
+    setRecoveryProgress(null);
+  };
+
   return (
     <ErrorBoundary>
       <ConfigProvider
@@ -182,38 +282,102 @@ function App() {
         }}
       >
         <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <h1 className="text-xl font-semibold text-gray-900">
-                  照片元数据叠加工具
-                </h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <button 
-                  className="btn-primary"
-                  onClick={() => setShowBatchProcessor(true)}
-                  disabled={selectedFiles.length === 0}
-                >
-                  批量处理 ({selectedFiles.length})
-                </button>
-                <button 
-                  className="btn-secondary"
-                  onClick={() => setShowSettingsManager(true)}
-                >
-                  设置
-                </button>
-                {isAutoSaveEnabled && (
-                  <div className="flex items-center space-x-2 text-sm text-green-600">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span>自动保存</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
+        {/* 增强的工具栏 */}
+        <EnhancedToolbar
+          onOpenFile={() => {
+            // 触发文件选择器
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+              const files = Array.from((e.target as HTMLInputElement).files || []);
+              if (files.length > 0) {
+                handleFileSelection({ files, source: 'file-input' });
+              }
+            };
+            input.click();
+          }}
+          onSaveFile={() => {
+            if (processedBlob && selectedPhoto) {
+              const url = URL.createObjectURL(processedBlob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }
+          }}
+          onBatchProcess={() => setShowBatchProcessor(true)}
+          onShowPresets={() => setShowPresetSelector(true)}
+          onShowSettings={() => setShowSettingsManager(true)}
+          onShowShortcuts={() => {
+            const event = new CustomEvent('app:show-help');
+            window.dispatchEvent(event);
+          }}
+          canUndo={undoRedo.canUndo}
+          canRedo={undoRedo.canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          undoDescription={undoRedo.getUndoDescription()}
+          redoDescription={undoRedo.getRedoDescription()}
+        />
+
+        {/* 键盘快捷键管理器 */}
+        <KeyboardShortcutManager
+          onOpenFile={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+              const files = Array.from((e.target as HTMLInputElement).files || []);
+              if (files.length > 0) {
+                handleFileSelection({ files, source: 'file-input' });
+              }
+            };
+            input.click();
+          }}
+          onSaveFile={() => {
+            if (processedBlob && selectedPhoto) {
+              const url = URL.createObjectURL(processedBlob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }
+          }}
+          onBatchProcess={() => setShowBatchProcessor(true)}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onShowPresets={() => setShowPresetSelector(true)}
+          onShowHelp={() => {
+            const event = new CustomEvent('app:show-help');
+            window.dispatchEvent(event);
+          }}
+          onToggleShortcutHints={() => {
+            const event = new CustomEvent('app:toggle-shortcuts-hint');
+            window.dispatchEvent(event);
+          }}
+          onDeleteSelected={() => {
+            if (selectedPhoto) {
+              removeFile(selectedPhoto.fileName);
+              setSelectedPhoto(null);
+              setSelectedFile(null);
+            }
+          }}
+          onCancel={() => {
+            // 关闭所有模态框
+            setShowSettingsManager(false);
+            setShowBatchProcessor(false);
+            setShowPresetSelector(false);
+          }}
+        />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <AnimatePresence>
@@ -589,6 +753,35 @@ function App() {
                 </div>
               </motion.div>
             </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* 快捷键帮助 */}
+        <ShortcutHelp />
+
+        {/* 浮动快捷键提示 */}
+        <FloatingShortcutHints />
+
+        {/* 会话恢复对话框 */}
+        <AnimatePresence>
+          {showSessionRecovery && recoveryProgress && (
+            <SessionRecoveryDialog
+              workProgress={recoveryProgress}
+              onRestore={handleRestoreSession}
+              onDiscard={handleDiscardSession}
+              onClose={() => handleDiscardSession()}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* 智能预设选择器 */}
+        <AnimatePresence>
+          {showPresetSelector && (
+            <SmartPresetSelector
+              onSelectPreset={handleApplyPreset}
+              onClose={() => setShowPresetSelector(false)}
+
+            />
           )}
         </AnimatePresence>
         

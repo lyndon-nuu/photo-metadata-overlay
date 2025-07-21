@@ -1,1 +1,477 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';\nimport { imageProcessingService } from '../../services/image-processing.service';\nimport {\n  mockPhotoMetadata,\n  mockOverlaySettings,\n  mockFrameSettings,\n  createMockFile,\n  createMockImage,\n  createMockCanvas,\n  PerformanceMonitor,\n  getMemoryUsage,\n  createLargeTestFile,\n  waitFor,\n  restoreMocks,\n} from '../../test/test-utils';\n\n// Mock DOM APIs\nObject.defineProperty(global, 'HTMLCanvasElement', {\n  value: class MockHTMLCanvasElement {\n    width = 0;\n    height = 0;\n    getContext = vi.fn(() => ({\n      clearRect: vi.fn(),\n      drawImage: vi.fn(),\n      fillRect: vi.fn(),\n      fillText: vi.fn(),\n      measureText: vi.fn(() => ({ width: 100 })),\n      beginPath: vi.fn(),\n      moveTo: vi.fn(),\n      lineTo: vi.fn(),\n      quadraticCurveTo: vi.fn(),\n      closePath: vi.fn(),\n      fill: vi.fn(),\n      stroke: vi.fn(),\n      save: vi.fn(),\n      restore: vi.fn(),\n      createLinearGradient: vi.fn(() => ({\n        addColorStop: vi.fn(),\n      })),\n      imageSmoothingEnabled: true,\n      imageSmoothingQuality: 'high',\n      globalAlpha: 1,\n      fillStyle: '#000000',\n      strokeStyle: '#000000',\n      lineWidth: 1,\n      font: '16px Arial',\n      textBaseline: 'top',\n      shadowColor: 'transparent',\n      shadowBlur: 0,\n      shadowOffsetX: 0,\n      shadowOffsetY: 0,\n    }));\n    toBlob = vi.fn((callback) => {\n      const blob = new Blob(['mock-image-data'], { type: 'image/jpeg' });\n      callback?.(blob);\n    });\n  },\n});\n\nObject.defineProperty(global, 'Image', {\n  value: class MockImage {\n    onload: (() => void) | null = null;\n    onerror: (() => void) | null = null;\n    src = '';\n    naturalWidth = 1920;\n    naturalHeight = 1080;\n    crossOrigin = '';\n    \n    constructor() {\n      setTimeout(() => {\n        if (this.onload) {\n          this.onload();\n        }\n      }, 10);\n    }\n  },\n});\n\nObject.defineProperty(global, 'URL', {\n  value: {\n    createObjectURL: vi.fn(() => 'blob:mock-url'),\n    revokeObjectURL: vi.fn(),\n  },\n});\n\ndescribe('Image Processing E2E Tests', () => {\n  let performanceMonitor: PerformanceMonitor;\n\n  beforeEach(() => {\n    performanceMonitor = new PerformanceMonitor();\n    vi.clearAllMocks();\n  });\n\n  afterEach(() => {\n    restoreMocks();\n  });\n\n  describe('Image Loading Performance', () => {\n    it('should load small images quickly', async () => {\n      const file = createMockFile('small-image.jpg', 'image/jpeg', 100000); // 100KB\n      \n      performanceMonitor.start();\n      const image = await imageProcessingService.loadImage(file);\n      const duration = performanceMonitor.end('small-image-load');\n      \n      expect(image).toBeDefined();\n      expect(duration).toBeLessThan(1000); // Should load in less than 1 second\n    });\n\n    it('should handle large images with performance optimization', async () => {\n      const file = createLargeTestFile(6000, 4000, 'large-image.jpg');\n      \n      performanceMonitor.start();\n      const image = await imageProcessingService.loadImage(file);\n      const duration = performanceMonitor.end('large-image-load');\n      \n      expect(image).toBeDefined();\n      expect(duration).toBeLessThan(5000); // Should load in less than 5 seconds\n    });\n\n    it('should cache loaded images for better performance', async () => {\n      const file = createMockFile('cached-image.jpg', 'image/jpeg', 500000);\n      \n      // First load\n      performanceMonitor.start();\n      const image1 = await imageProcessingService.loadImage(file);\n      const firstLoadTime = performanceMonitor.end('first-load');\n      \n      // Second load (should be from cache)\n      performanceMonitor.start();\n      const image2 = await imageProcessingService.loadImage(file);\n      const secondLoadTime = performanceMonitor.end('second-load');\n      \n      expect(image1).toBeDefined();\n      expect(image2).toBeDefined();\n      expect(secondLoadTime).toBeLessThan(firstLoadTime * 0.1); // Cache should be much faster\n    });\n\n    it('should reject files that are too large', async () => {\n      const file = createMockFile('huge-image.jpg', 'image/jpeg', 60 * 1024 * 1024); // 60MB\n      \n      await expect(imageProcessingService.loadImage(file))\n        .rejects\n        .toThrow('文件过大');\n    });\n\n    it('should reject unsupported file types', async () => {\n      const file = createMockFile('document.pdf', 'application/pdf', 1000000);\n      \n      await expect(imageProcessingService.loadImage(file))\n        .rejects\n        .toThrow('不支持的文件类型');\n    });\n  });\n\n  describe('Overlay Processing Performance', () => {\n    it('should apply overlay efficiently', async () => {\n      const file = createMockFile('test-image.jpg', 'image/jpeg', 1000000);\n      const image = await imageProcessingService.loadImage(file);\n      \n      performanceMonitor.start();\n      const canvas = await imageProcessingService.applyOverlay(\n        image,\n        mockPhotoMetadata,\n        mockOverlaySettings\n      );\n      const duration = performanceMonitor.end('overlay-processing');\n      \n      expect(canvas).toBeDefined();\n      expect(canvas.width).toBeGreaterThan(0);\n      expect(canvas.height).toBeGreaterThan(0);\n      expect(duration).toBeLessThan(2000); // Should process in less than 2 seconds\n    });\n\n    it('should handle overlay with brand logo', async () => {\n      const file = createMockFile('test-image.jpg', 'image/jpeg', 1000000);\n      const image = await imageProcessingService.loadImage(file);\n      \n      const overlayWithLogo = {\n        ...mockOverlaySettings,\n        displayItems: {\n          ...mockOverlaySettings.displayItems,\n          brandLogo: true,\n        },\n      };\n      \n      performanceMonitor.start();\n      const canvas = await imageProcessingService.applyOverlay(\n        image,\n        mockPhotoMetadata,\n        overlayWithLogo\n      );\n      const duration = performanceMonitor.end('overlay-with-logo');\n      \n      expect(canvas).toBeDefined();\n      expect(duration).toBeLessThan(3000); // Should process in less than 3 seconds\n    });\n\n    it('should skip overlay when no data is available', async () => {\n      const file = createMockFile('test-image.jpg', 'image/jpeg', 1000000);\n      const image = await imageProcessingService.loadImage(file);\n      \n      const emptyMetadata = {\n        ...mockPhotoMetadata,\n        camera: { make: '', model: '' },\n        settings: { aperture: '', shutterSpeed: '', iso: 0, focalLength: '', flash: '' },\n      };\n      \n      const overlaySettings = {\n        ...mockOverlaySettings,\n        displayItems: {\n          camera: false,\n          settings: false,\n          timestamp: false,\n          location: false,\n          brandLogo: false,\n          customText: false,\n        },\n      };\n      \n      performanceMonitor.start();\n      const canvas = await imageProcessingService.applyOverlay(\n        image,\n        emptyMetadata,\n        overlaySettings\n      );\n      const duration = performanceMonitor.end('no-overlay');\n      \n      expect(canvas).toBeDefined();\n      expect(duration).toBeLessThan(100); // Should be very fast when no overlay is applied\n    });\n  });\n\n  describe('Frame Processing Performance', () => {\n    it('should apply simple frame efficiently', async () => {\n      const canvas = createMockCanvas(1920, 1080);\n      \n      performanceMonitor.start();\n      const framedCanvas = await imageProcessingService.applyFrame(\n        canvas,\n        { ...mockFrameSettings, style: 'simple' }\n      );\n      const duration = performanceMonitor.end('simple-frame');\n      \n      expect(framedCanvas).toBeDefined();\n      expect(duration).toBeLessThan(1000); // Should process in less than 1 second\n    });\n\n    it('should apply complex frame styles efficiently', async () => {\n      const canvas = createMockCanvas(1920, 1080);\n      const frameStyles = ['shadow', 'film', 'polaroid', 'vintage'] as const;\n      \n      for (const style of frameStyles) {\n        performanceMonitor.start();\n        const framedCanvas = await imageProcessingService.applyFrame(\n          canvas,\n          { ...mockFrameSettings, style }\n        );\n        const duration = performanceMonitor.end(`${style}-frame`);\n        \n        expect(framedCanvas).toBeDefined();\n        expect(duration).toBeLessThan(2000); // Should process in less than 2 seconds\n      }\n    });\n\n    it('should skip frame when disabled', async () => {\n      const canvas = createMockCanvas(1920, 1080);\n      \n      performanceMonitor.start();\n      const framedCanvas = await imageProcessingService.applyFrame(\n        canvas,\n        { ...mockFrameSettings, enabled: false }\n      );\n      const duration = performanceMonitor.end('no-frame');\n      \n      expect(framedCanvas).toBe(canvas); // Should return the same canvas\n      expect(duration).toBeLessThan(10); // Should be almost instant\n    });\n  });\n\n  describe('Export Performance', () => {\n    it('should export JPEG efficiently', async () => {\n      const canvas = createMockCanvas(1920, 1080);\n      \n      performanceMonitor.start();\n      const blob = await imageProcessingService.exportImage(canvas, 'jpeg', 0.9);\n      const duration = performanceMonitor.end('jpeg-export');\n      \n      expect(blob).toBeDefined();\n      expect(blob.type).toBe('image/jpeg');\n      expect(duration).toBeLessThan(1000); // Should export in less than 1 second\n    });\n\n    it('should export PNG efficiently', async () => {\n      const canvas = createMockCanvas(1920, 1080);\n      \n      performanceMonitor.start();\n      const blob = await imageProcessingService.exportImage(canvas, 'png');\n      const duration = performanceMonitor.end('png-export');\n      \n      expect(blob).toBeDefined();\n      expect(blob.type).toBe('image/png');\n      expect(duration).toBeLessThan(2000); // PNG might take a bit longer\n    });\n\n    it('should handle export errors gracefully', async () => {\n      const canvas = createMockCanvas(1920, 1080);\n      \n      // Mock toBlob to fail\n      canvas.toBlob = vi.fn((callback) => {\n        callback?.(null);\n      });\n      \n      await expect(imageProcessingService.exportImage(canvas, 'jpeg'))\n        .rejects\n        .toThrow('图像导出失败');\n    });\n  });\n\n  describe('Memory Management', () => {\n    it('should manage memory efficiently during processing', async () => {\n      const initialMemory = getMemoryUsage();\n      \n      // Process multiple images\n      const files = Array.from({ length: 5 }, (_, i) => \n        createMockFile(`test-${i}.jpg`, 'image/jpeg', 1000000)\n      );\n      \n      for (const file of files) {\n        const image = await imageProcessingService.loadImage(file);\n        const canvas = await imageProcessingService.applyOverlay(\n          image,\n          mockPhotoMetadata,\n          mockOverlaySettings\n        );\n        const framedCanvas = await imageProcessingService.applyFrame(canvas, mockFrameSettings);\n        await imageProcessingService.exportImage(framedCanvas, 'jpeg');\n      }\n      \n      const finalMemory = getMemoryUsage();\n      \n      // Memory usage should not increase dramatically\n      if (initialMemory.total > 0) {\n        const memoryIncrease = finalMemory.used - initialMemory.used;\n        const increasePercentage = (memoryIncrease / initialMemory.total) * 100;\n        expect(increasePercentage).toBeLessThan(50); // Should not increase by more than 50%\n      }\n    });\n\n    it('should clear cache when memory pressure is detected', async () => {\n      // This test would require actual memory pressure simulation\n      // For now, we'll test the cache clearing mechanism directly\n      const file1 = createMockFile('test1.jpg', 'image/jpeg', 1000000);\n      const file2 = createMockFile('test2.jpg', 'image/jpeg', 1000000);\n      \n      // Load images to populate cache\n      await imageProcessingService.loadImage(file1);\n      await imageProcessingService.loadImage(file2);\n      \n      // Simulate memory pressure by calling the private method\n      // (In a real scenario, this would be triggered automatically)\n      const service = imageProcessingService as any;\n      if (service.clearImageCache) {\n        service.clearImageCache();\n      }\n      \n      // Verify that subsequent loads work correctly\n      const image = await imageProcessingService.loadImage(file1);\n      expect(image).toBeDefined();\n    });\n  });\n\n  describe('Error Handling and Recovery', () => {\n    it('should handle image loading timeout', async () => {\n      // Mock Image to never load\n      const OriginalImage = global.Image;\n      global.Image = class MockTimeoutImage {\n        onload: (() => void) | null = null;\n        onerror: (() => void) | null = null;\n        src = '';\n        naturalWidth = 1920;\n        naturalHeight = 1080;\n        crossOrigin = '';\n        \n        constructor() {\n          // Never call onload to simulate timeout\n        }\n      } as any;\n      \n      const file = createMockFile('timeout-image.jpg', 'image/jpeg', 1000000);\n      \n      await expect(imageProcessingService.loadImage(file))\n        .rejects\n        .toThrow('图像加载超时');\n      \n      global.Image = OriginalImage;\n    });\n\n    it('should handle canvas context creation failure', async () => {\n      // This would require mocking the canvas creation to fail\n      // For now, we'll test that the service handles null context gracefully\n      expect(() => {\n        // The service should throw an error during construction if context is null\n        const mockCanvas = {\n          getContext: () => null,\n        };\n        document.createElement = vi.fn(() => mockCanvas as any);\n        \n        // This should throw during service initialization\n        // new ImageProcessingServiceImpl();\n      }).not.toThrow(); // The service is already initialized\n    });\n\n    it('should handle processing errors gracefully', async () => {\n      const file = createMockFile('error-image.jpg', 'image/jpeg', 1000000);\n      \n      // Mock Image to trigger error\n      const OriginalImage = global.Image;\n      global.Image = class MockErrorImage {\n        onload: (() => void) | null = null;\n        onerror: (() => void) | null = null;\n        src = '';\n        naturalWidth = 1920;\n        naturalHeight = 1080;\n        crossOrigin = '';\n        \n        constructor() {\n          setTimeout(() => {\n            if (this.onerror) {\n              this.onerror();\n            }\n          }, 10);\n        }\n      } as any;\n      \n      await expect(imageProcessingService.loadImage(file))\n        .rejects\n        .toThrow('无法加载图像');\n      \n      global.Image = OriginalImage;\n    });\n  });\n\n  describe('Performance Benchmarks', () => {\n    it('should meet performance benchmarks for typical workflow', async () => {\n      const file = createMockFile('benchmark-image.jpg', 'image/jpeg', 2000000); // 2MB\n      \n      // Complete workflow benchmark\n      performanceMonitor.start();\n      \n      const image = await imageProcessingService.loadImage(file);\n      const overlaidCanvas = await imageProcessingService.applyOverlay(\n        image,\n        mockPhotoMetadata,\n        mockOverlaySettings\n      );\n      const framedCanvas = await imageProcessingService.applyFrame(\n        overlaidCanvas,\n        mockFrameSettings\n      );\n      const blob = await imageProcessingService.exportImage(framedCanvas, 'jpeg', 0.9);\n      \n      const totalDuration = performanceMonitor.end('complete-workflow');\n      \n      expect(blob).toBeDefined();\n      expect(totalDuration).toBeLessThan(5000); // Complete workflow should take less than 5 seconds\n      \n      console.log(`Complete workflow took ${totalDuration.toFixed(2)}ms`);\n    });\n\n    it('should provide performance statistics', () => {\n      const stats = performanceMonitor.getStats('complete-workflow');\n      \n      expect(stats.count).toBeGreaterThan(0);\n      expect(stats.avg).toBeGreaterThan(0);\n      expect(stats.min).toBeLessThanOrEqual(stats.avg);\n      expect(stats.max).toBeGreaterThanOrEqual(stats.avg);\n      \n      console.log('Performance Statistics:', stats);\n    });\n  });\n});\n"
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import App from '../../App';
+import { storageService } from '../../services/storage.service';
+import { exifService } from '../../services/exif.service';
+import { imageProcessingService } from '../../services/image-processing.service';
+
+// Mock services
+vi.mock('../../services/storage.service');
+vi.mock('../../services/exif.service');
+vi.mock('../../services/image-processing.service');
+
+// Mock Tauri APIs
+vi.mock('@tauri-apps/api/fs', () => ({
+  readBinaryFile: vi.fn(),
+  writeBinaryFile: vi.fn(),
+  exists: vi.fn(),
+}));
+
+vi.mock('@tauri-apps/api/dialog', () => ({
+  open: vi.fn(),
+  save: vi.fn(),
+}));
+
+describe('Image Processing E2E Tests', () => {
+  let user: ReturnType<typeof userEvent.setup>;
+
+  beforeEach(() => {
+    user = userEvent.setup();
+    
+    // Mock default service responses
+    vi.mocked(storageService.loadOverlaySettings).mockResolvedValue({
+      position: 'bottom-right',
+      font: {
+        family: 'Arial',
+        size: 14,
+        color: '#ffffff',
+        weight: 'normal',
+      },
+      background: {
+        color: '#000000',
+        opacity: 0.6,
+        padding: 8,
+        borderRadius: 4,
+      },
+      displayItems: {
+        brand: true,
+        model: true,
+        aperture: true,
+        shutterSpeed: true,
+        iso: true,
+        timestamp: false,
+        location: false,
+        brandLogo: false,
+      },
+    });
+
+    vi.mocked(storageService.loadFrameSettings).mockResolvedValue({
+      enabled: false,
+      style: 'simple',
+      color: '#ffffff',
+      width: 10,
+      opacity: 1.0,
+    });
+
+    vi.mocked(exifService.extractMetadata).mockResolvedValue({
+      fileName: 'test-image.jpg',
+      fileSize: 2048000,
+      dimensions: { width: 1920, height: 1080 },
+      exif: {
+        make: 'Canon',
+        model: 'EOS R5',
+        aperture: 'f/2.8',
+        shutterSpeed: '1/125',
+        iso: '400',
+        focalLength: '85mm',
+        timestamp: new Date('2023-01-01T12:00:00Z'),
+      },
+    });
+
+    vi.mocked(imageProcessingService.processImage).mockResolvedValue(
+      new Blob(['processed-image-data'], { type: 'image/jpeg' })
+    );
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('Complete Image Processing Workflow', () => {
+    it('应该完成完整的图像处理工作流程', async () => {
+      render(<App />);
+
+      // 1. 等待应用程序加载
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 2. 选择文件
+      const fileInput = screen.getByLabelText(/选择文件/i);
+      const mockFile = new File(['test-image-data'], 'test-image.jpg', { 
+        type: 'image/jpeg' 
+      });
+
+      await user.upload(fileInput, mockFile);
+
+      // 3. 验证文件已加载
+      await waitFor(() => {
+        expect(screen.getByText('test-image.jpg')).toBeInTheDocument();
+      });
+
+      // 4. 验证EXIF数据显示
+      await waitFor(() => {
+        expect(screen.getByText('Canon')).toBeInTheDocument();
+        expect(screen.getByText('EOS R5')).toBeInTheDocument();
+      });
+
+      // 5. 调整叠加设置
+      const positionSelect = screen.getByLabelText(/位置/i);
+      await user.selectOptions(positionSelect, 'top-left');
+
+      const fontSizeSlider = screen.getByLabelText(/字体大小/i);
+      await user.clear(fontSizeSlider);
+      await user.type(fontSizeSlider, '16');
+
+      // 6. 启用相框
+      const enableFrameCheckbox = screen.getByLabelText(/启用相框/i);
+      await user.click(enableFrameCheckbox);
+
+      // 7. 验证预览更新
+      await waitFor(() => {
+        expect(screen.getByText(/预览/i)).toBeInTheDocument();
+      });
+
+      // 8. 处理图像
+      const processButton = screen.getByText(/处理/i);
+      await user.click(processButton);
+
+      // 9. 验证处理完成
+      await waitFor(() => {
+        expect(imageProcessingService.processImage).toHaveBeenCalled();
+      });
+
+      // 10. 下载结果
+      const downloadButton = screen.getByText(/下载/i);
+      expect(downloadButton).toBeEnabled();
+      
+      await user.click(downloadButton);
+
+      // 验证下载触发
+      // 这里可以验证下载相关的DOM操作
+    });
+
+    it('应该处理批量图像处理工作流程', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 1. 选择多个文件
+      const fileInput = screen.getByLabelText(/选择文件/i);
+      const mockFiles = [
+        new File(['image1'], 'image1.jpg', { type: 'image/jpeg' }),
+        new File(['image2'], 'image2.jpg', { type: 'image/jpeg' }),
+        new File(['image3'], 'image3.jpg', { type: 'image/jpeg' }),
+      ];
+
+      await user.upload(fileInput, mockFiles);
+
+      // 2. 验证文件列表
+      await waitFor(() => {
+        expect(screen.getByText('image1.jpg')).toBeInTheDocument();
+        expect(screen.getByText('image2.jpg')).toBeInTheDocument();
+        expect(screen.getByText('image3.jpg')).toBeInTheDocument();
+      });
+
+      // 3. 打开批量处理
+      const batchButton = screen.getByText(/批量处理/i);
+      await user.click(batchButton);
+
+      // 4. 验证批量处理界面
+      await waitFor(() => {
+        expect(screen.getByText(/批量处理设置/i)).toBeInTheDocument();
+      });
+
+      // 5. 开始批量处理
+      const startBatchButton = screen.getByText(/开始处理/i);
+      await user.click(startBatchButton);
+
+      // 6. 验证进度显示
+      await waitFor(() => {
+        expect(screen.getByText(/处理进度/i)).toBeInTheDocument();
+      });
+
+      // 7. 等待处理完成
+      await waitFor(() => {
+        expect(screen.getByText(/处理完成/i)).toBeInTheDocument();
+      }, { timeout: 10000 });
+    });
+  });
+
+  describe('Error Handling Scenarios', () => {
+    it('应该处理文件加载错误', async () => {
+      // Mock EXIF service to throw error
+      vi.mocked(exifService.extractMetadata).mockRejectedValue(
+        new Error('无法读取EXIF数据')
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      const fileInput = screen.getByLabelText(/选择文件/i);
+      const mockFile = new File(['invalid-data'], 'invalid.jpg', { 
+        type: 'image/jpeg' 
+      });
+
+      await user.upload(fileInput, mockFile);
+
+      // 验证错误处理
+      await waitFor(() => {
+        expect(screen.getByText(/错误/i)).toBeInTheDocument();
+      });
+    });
+
+    it('应该处理图像处理错误', async () => {
+      // Mock image processing service to throw error
+      vi.mocked(imageProcessingService.processImage).mockRejectedValue(
+        new Error('图像处理失败')
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 添加文件
+      const fileInput = screen.getByLabelText(/选择文件/i);
+      const mockFile = new File(['test-data'], 'test.jpg', { type: 'image/jpeg' });
+      await user.upload(fileInput, mockFile);
+
+      await waitFor(() => {
+        expect(screen.getByText('test.jpg')).toBeInTheDocument();
+      });
+
+      // 尝试处理
+      const processButton = screen.getByText(/处理/i);
+      await user.click(processButton);
+
+      // 验证错误处理
+      await waitFor(() => {
+        expect(screen.getByText(/处理失败/i)).toBeInTheDocument();
+      });
+    });
+
+    it('应该处理存储错误', async () => {
+      // Mock storage service to throw error
+      vi.mocked(storageService.saveOverlaySettings).mockRejectedValue(
+        new Error('存储失败')
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 修改设置触发保存
+      const fontSizeSlider = screen.getByLabelText(/字体大小/i);
+      await user.clear(fontSizeSlider);
+      await user.type(fontSizeSlider, '20');
+
+      // 等待自动保存尝试
+      await waitFor(() => {
+        expect(storageService.saveOverlaySettings).toHaveBeenCalled();
+      });
+
+      // 验证错误不会阻塞用户操作
+      expect(fontSizeSlider).toHaveValue('20');
+    });
+  });
+
+  describe('Performance Scenarios', () => {
+    it('应该处理大文件', async () => {
+      // Mock large file metadata
+      vi.mocked(exifService.extractMetadata).mockResolvedValue({
+        fileName: 'large-image.jpg',
+        fileSize: 50 * 1024 * 1024, // 50MB
+        dimensions: { width: 8000, height: 6000 },
+        exif: {
+          make: 'Canon',
+          model: 'EOS R5',
+          aperture: 'f/2.8',
+          shutterSpeed: '1/125',
+          iso: '400',
+          focalLength: '85mm',
+          timestamp: new Date(),
+        },
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      const fileInput = screen.getByLabelText(/选择文件/i);
+      const largeFile = new File(
+        [new ArrayBuffer(50 * 1024 * 1024)], 
+        'large-image.jpg', 
+        { type: 'image/jpeg' }
+      );
+
+      const startTime = performance.now();
+      await user.upload(fileInput, largeFile);
+
+      await waitFor(() => {
+        expect(screen.getByText('large-image.jpg')).toBeInTheDocument();
+      });
+
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+
+      // 验证处理时间合理
+      expect(duration).toBeLessThan(5000); // 应该在5秒内完成
+    });
+
+    it('应该处理大量文件', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 创建大量文件
+      const manyFiles = Array.from({ length: 50 }, (_, i) => 
+        new File([`image-${i}`], `image-${i}.jpg`, { type: 'image/jpeg' })
+      );
+
+      const fileInput = screen.getByLabelText(/选择文件/i);
+      
+      const startTime = performance.now();
+      await user.upload(fileInput, manyFiles);
+
+      // 等待文件处理完成
+      await waitFor(() => {
+        expect(screen.getByText('image-0.jpg')).toBeInTheDocument();
+      }, { timeout: 10000 });
+
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+
+      // 验证处理时间合理
+      expect(duration).toBeLessThan(10000); // 应该在10秒内完成
+    });
+  });
+
+  describe('User Experience Scenarios', () => {
+    it('应该支持键盘快捷键', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 测试帮助快捷键
+      await user.keyboard('?');
+
+      await waitFor(() => {
+        expect(screen.getByText(/键盘快捷键/i)).toBeInTheDocument();
+      });
+
+      // 关闭帮助
+      await user.keyboard('{Escape}');
+
+      await waitFor(() => {
+        expect(screen.queryByText(/键盘快捷键/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('应该支持撤销重做', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 修改设置
+      const fontSizeSlider = screen.getByLabelText(/字体大小/i);
+      const originalValue = fontSizeSlider.getAttribute('value');
+      
+      await user.clear(fontSizeSlider);
+      await user.type(fontSizeSlider, '20');
+
+      expect(fontSizeSlider).toHaveValue('20');
+
+      // 撤销
+      await user.keyboard('{Control>}z{/Control}');
+
+      await waitFor(() => {
+        expect(fontSizeSlider).toHaveValue(originalValue);
+      });
+
+      // 重做
+      await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+
+      await waitFor(() => {
+        expect(fontSizeSlider).toHaveValue('20');
+      });
+    });
+
+    it('应该支持预设功能', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 打开预设选择器
+      const presetButton = screen.getByText(/预设/i);
+      await user.click(presetButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/智能预设选择器/i)).toBeInTheDocument();
+      });
+
+      // 选择一个预设
+      const simplePreset = screen.getByText(/简约摄影/i);
+      await user.click(simplePreset);
+
+      // 验证预设应用
+      await waitFor(() => {
+        expect(screen.queryByText(/智能预设选择器/i)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('应该支持键盘导航', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 测试Tab导航
+      await user.tab();
+      expect(document.activeElement).toBeInstanceOf(HTMLElement);
+
+      // 继续Tab导航
+      await user.tab();
+      expect(document.activeElement).toBeInstanceOf(HTMLElement);
+    });
+
+    it('应该有适当的ARIA标签', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('照片元数据叠加工具')).toBeInTheDocument();
+      });
+
+      // 检查重要元素的可访问性
+      const fileInput = screen.getByLabelText(/选择文件/i);
+      expect(fileInput).toHaveAttribute('aria-label');
+
+      const sliders = screen.getAllByRole('slider');
+      sliders.forEach(slider => {
+        expect(slider).toHaveAttribute('aria-label');
+      });
+    });
+  });
+});

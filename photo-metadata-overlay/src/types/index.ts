@@ -446,7 +446,7 @@ export type OptionalFields<T, K extends keyof T> = Omit<T, K> &
 // Event types
 export interface FileSelectedEvent {
   files: File[];
-  source: 'drop' | 'click' | 'paste';
+  source: 'drop' | 'click' | 'paste' | 'file-input';
 }
 
 export interface OverlayChangeEvent {

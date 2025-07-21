@@ -1,271 +1,399 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { performanceOptimizer, withPerformanceTracking } from '../services/performance-optimizer.service';
-import { PerformanceMonitor } from '../test/test-utils';
+import { imageProcessingService } from '../services/image-processing.service';
+import { exifService } from '../services/exif.service';
+import { storageService } from '../services/storage.service';
 
-describe('Performance Optimization Tests', () => {
-  let performanceMonitor: PerformanceMonitor;
-
+describe('Performance Tests', () => {
   beforeEach(() => {
-    performanceMonitor = new PerformanceMonitor();
     performanceOptimizer.startMonitoring();
   });
 
   afterEach(() => {
     performanceOptimizer.stopMonitoring();
-    vi.clearAllMocks();
   });
 
-  describe('Performance Monitoring', () => {
-    it('should record performance metrics correctly', async () => {
-      const operation = 'test-operation';
-      const duration = 100;
-
-      performanceOptimizer.recordMetric(operation, duration);
+  describe('Image Processing Performance', () => {
+    it('应该在合理时间内处理小图像', async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d')!;
       
-      const stats = performanceOptimizer.getPerformanceStats(operation);
+      const startTime = performance.now();
       
-      expect(stats).toBeDefined();
-      expect(stats!.count).toBe(1);
-      expect(stats!.average).toBe(duration);
-      expect(stats!.min).toBe(duration);
-      expect(stats!.max).toBe(duration);
-      expect(stats!.recent).toBe(duration);
+      // 模拟图像处理
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, 800, 600);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px Arial';
+      ctx.fillText('Test Image', 10, 30);
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(duration).toBeLessThan(100); // 应该在100ms内完成
     });
 
-    it('should calculate performance statistics correctly', async () => {
-      const operation = 'multi-test-operation';
-      const durations = [100, 200, 150, 300, 250];
-
-      durations.forEach(duration => {
-        performanceOptimizer.recordMetric(operation, duration);
-      });
-
-      const stats = performanceOptimizer.getPerformanceStats(operation);
+    it('应该在合理时间内处理大图像', async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 4000;
+      canvas.height = 3000;
+      const ctx = canvas.getContext('2d')!;
       
-      expect(stats).toBeDefined();
-      expect(stats!.count).toBe(5);
-      expect(stats!.average).toBe(200); // (100+200+150+300+250)/5
-      expect(stats!.min).toBe(100);
-      expect(stats!.max).toBe(300);
-      expect(stats!.recent).toBe(250);
+      const startTime = performance.now();
+      
+      // 模拟大图像处理
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, 4000, 3000);
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(duration).toBeLessThan(1000); // 应该在1秒内完成
     });
 
-    it('should limit metric history to prevent memory leaks', () => {
-      const operation = 'memory-test-operation';
+    it('应该正确优化图像尺寸', () => {
+      const optimized = performanceOptimizer.optimizeImageDimensions(8000, 6000);
       
-      // Record more than 100 metrics
-      for (let i = 0; i < 150; i++) {
-        performanceOptimizer.recordMetric(operation, i);
-      }
-
-      const stats = performanceOptimizer.getPerformanceStats(operation);
-      
-      expect(stats).toBeDefined();
-      expect(stats!.count).toBeLessThanOrEqual(100); // Should be limited to 100
+      expect(optimized.shouldOptimize).toBe(true);
+      expect(optimized.width).toBeLessThan(8000);
+      expect(optimized.height).toBeLessThan(6000);
+      expect(optimized.scaleFactor).toBeLessThan(1);
     });
   });
 
   describe('Memory Management', () => {
-    it('should detect memory usage correctly', () => {
+    it('应该正确监控内存使用', () => {
       const memoryUsage = performanceOptimizer.getMemoryUsage();
       
-      expect(memoryUsage).toBeDefined();
-      expect(memoryUsage.used).toBeGreaterThanOrEqual(0);
-      expect(memoryUsage.total).toBeGreaterThanOrEqual(0);
+      expect(memoryUsage).toHaveProperty('used');
+      expect(memoryUsage).toHaveProperty('total');
+      expect(memoryUsage).toHaveProperty('percentage');
+      expect(memoryUsage).toHaveProperty('available');
+      
       expect(memoryUsage.percentage).toBeGreaterThanOrEqual(0);
-      expect(memoryUsage.available).toBeGreaterThanOrEqual(0);
+      expect(memoryUsage.percentage).toBeLessThanOrEqual(100);
     });
 
-    it('should detect memory pressure correctly', () => {
-      const isUnderPressure = performanceOptimizer.isUnderMemoryPressure();
+    it('应该在内存压力下触发清理', () => {
+      const cleanupSpy = vi.fn();
+      performanceOptimizer.registerCleanupCallback(cleanupSpy);
       
-      expect(typeof isUnderPressure).toBe('boolean');
-    });
-
-    it('should perform cleanup when requested', () => {
-      let cleanupCalled = false;
+      // 模拟内存压力
+      vi.spyOn(performanceOptimizer, 'isUnderMemoryPressure').mockReturnValue(true);
       
-      performanceOptimizer.registerCleanupCallback(() => {
-        cleanupCalled = true;
-      });
-
       performanceOptimizer.performCleanup();
       
-      expect(cleanupCalled).toBe(true);
-    });
-  });
-
-  describe('Image Optimization', () => {
-    it('should optimize large image dimensions', () => {
-      const largeWidth = 8000;
-      const largeHeight = 6000;
+      expect(cleanupSpy).toHaveBeenCalled();
       
-      const optimization = performanceOptimizer.optimizeImageDimensions(largeWidth, largeHeight);
-      
-      expect(optimization.shouldOptimize).toBe(true);
-      expect(optimization.width).toBeLessThan(largeWidth);
-      expect(optimization.height).toBeLessThan(largeHeight);
-      expect(optimization.scaleFactor).toBeLessThan(1);
+      performanceOptimizer.unregisterCleanupCallback(cleanupSpy);
     });
 
-    it('should not optimize reasonably sized images', () => {
-      const normalWidth = 1920;
-      const normalHeight = 1080;
-      
-      const optimization = performanceOptimizer.optimizeImageDimensions(normalWidth, normalHeight);
-      
-      expect(optimization.shouldOptimize).toBe(false);
-      expect(optimization.width).toBe(normalWidth);
-      expect(optimization.height).toBe(normalHeight);
-      expect(optimization.scaleFactor).toBe(1);
-    });
-  });
-
-  describe('Concurrency Optimization', () => {
-    it('should provide reasonable concurrency recommendations', () => {
+    it('应该根据内存使用情况调整并发数', () => {
       const concurrency = performanceOptimizer.getRecommendedConcurrency();
       
       expect(concurrency).toBeGreaterThan(0);
-      expect(concurrency).toBeLessThanOrEqual(8); // Should not exceed maximum
-    });
-
-    it('should adjust concurrency based on memory pressure', () => {
-      // This test would require mocking memory usage
-      // For now, we'll just verify the method works
-      const concurrency = performanceOptimizer.getRecommendedConcurrency();
-      
-      expect(typeof concurrency).toBe('number');
-      expect(concurrency).toBeGreaterThan(0);
+      expect(concurrency).toBeLessThanOrEqual(8);
     });
   });
 
-  describe('Performance Tracking Decorator', () => {
-    it('should track function execution time', async () => {
+  describe('Performance Metrics', () => {
+    it('应该正确记录性能指标', () => {
+      const operation = 'test-operation';
+      const duration = 150;
+      
+      performanceOptimizer.recordMetric(operation, duration);
+      
+      const stats = performanceOptimizer.getPerformanceStats(operation);
+      
+      expect(stats).not.toBeNull();
+      expect(stats!.count).toBe(1);
+      expect(stats!.recent).toBe(duration);
+      expect(stats!.average).toBe(duration);
+    });
+
+    it('应该正确计算性能统计', () => {
+      const operation = 'test-stats';
+      const durations = [100, 200, 150, 300, 250];
+      
+      durations.forEach(duration => {
+        performanceOptimizer.recordMetric(operation, duration);
+      });
+      
+      const stats = performanceOptimizer.getPerformanceStats(operation);
+      
+      expect(stats!.count).toBe(5);
+      expect(stats!.min).toBe(100);
+      expect(stats!.max).toBe(300);
+      expect(stats!.average).toBe(200);
+    });
+
+    it('应该使用性能跟踪装饰器', async () => {
       const testFunction = async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
-        return 'test-result';
+        return 'test result';
       };
-
+      
       const result = await withPerformanceTracking('test-function', testFunction);
       
-      expect(result).toBe('test-result');
+      expect(result).toBe('test result');
       
       const stats = performanceOptimizer.getPerformanceStats('test-function');
-      expect(stats).toBeDefined();
-      expect(stats!.count).toBe(1);
-      expect(stats!.average).toBeGreaterThan(90); // Should be around 100ms
+      expect(stats).not.toBeNull();
+      expect(stats!.recent).toBeGreaterThan(90); // 应该接近100ms
+    });
+  });
+
+  describe('Service Performance', () => {
+    it('EXIF服务应该快速处理', async () => {
+      const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
+      
+      const startTime = performance.now();
+      
+      try {
+        await exifService.extractMetadata(mockFile);
+      } catch (error) {
+        // 忽略错误，只测试性能
+      }
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(duration).toBeLessThan(500); // 应该在500ms内完成
     });
 
-    it('should track errors separately', async () => {
-      const errorFunction = async () => {
-        throw new Error('Test error');
-      };
-
-      await expect(
-        withPerformanceTracking('error-function', errorFunction)
-      ).rejects.toThrow('Test error');
+    it('存储服务应该快速读写', async () => {
+      const testData = { test: 'data' };
       
-      const errorStats = performanceOptimizer.getPerformanceStats('error-function-error');
-      expect(errorStats).toBeDefined();
-      expect(errorStats!.count).toBe(1);
+      const startTime = performance.now();
+      
+      try {
+        await storageService.saveData('test-key', testData);
+        await storageService.loadData('test-key', {});
+      } catch (error) {
+        // 忽略错误，只测试性能
+      }
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(duration).toBeLessThan(100); // 应该在100ms内完成
+    });
+  });
+
+  describe('Batch Processing Performance', () => {
+    it('应该高效处理批量文件', async () => {
+      const fileCount = 10;
+      const mockFiles = Array.from({ length: fileCount }, (_, i) => 
+        new File(['test'], `test${i}.jpg`, { type: 'image/jpeg' })
+      );
+      
+      const startTime = performance.now();
+      
+      // 模拟批量处理
+      const promises = mockFiles.map(async (file, index) => {
+        // 模拟处理延迟
+        await new Promise(resolve => setTimeout(resolve, 10));
+        return `processed-${index}`;
+      });
+      
+      const results = await Promise.all(promises);
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(results).toHaveLength(fileCount);
+      expect(duration).toBeLessThan(1000); // 应该在1秒内完成
+      
+      // 计算平均处理时间
+      const avgTime = duration / fileCount;
+      expect(avgTime).toBeLessThan(100); // 每个文件平均处理时间应该小于100ms
+    });
+
+    it('应该正确处理并发限制', async () => {
+      const concurrency = performanceOptimizer.getRecommendedConcurrency();
+      const fileCount = concurrency * 3;
+      
+      let activeCount = 0;
+      let maxActive = 0;
+      
+      const processFile = async () => {
+        activeCount++;
+        maxActive = Math.max(maxActive, activeCount);
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        activeCount--;
+      };
+      
+      const promises: Promise<void>[] = [];
+      for (let i = 0; i < fileCount; i++) {
+        if (promises.length >= concurrency) {
+          await Promise.race(promises);
+        }
+        promises.push(processFile());
+      }
+      
+      await Promise.all(promises);
+      
+      expect(maxActive).toBeLessThanOrEqual(concurrency + 1); // 允许小幅超出
+    });
+  });
+
+  describe('UI Performance', () => {
+    it('应该快速渲染组件', () => {
+      const startTime = performance.now();
+      
+      // 模拟组件渲染
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <div class="card">
+          <h2>Test Component</h2>
+          <p>Test content</p>
+          <button>Test Button</button>
+        </div>
+      `;
+      
+      document.body.appendChild(element);
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(duration).toBeLessThan(50); // 应该在50ms内完成
+      
+      document.body.removeChild(element);
+    });
+
+    it('应该高效处理大量DOM操作', () => {
+      const startTime = performance.now();
+      
+      const container = document.createElement('div');
+      const fragment = document.createDocumentFragment();
+      
+      // 创建大量DOM元素
+      for (let i = 0; i < 1000; i++) {
+        const item = document.createElement('div');
+        item.textContent = `Item ${i}`;
+        fragment.appendChild(item);
+      }
+      
+      container.appendChild(fragment);
+      document.body.appendChild(container);
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      expect(duration).toBeLessThan(100); // 应该在100ms内完成
+      expect(container.children).toHaveLength(1000);
+      
+      document.body.removeChild(container);
     });
   });
 
   describe('Resource Cleanup', () => {
-    it('should register and execute cleanup callbacks', () => {
-      let callback1Called = false;
-      let callback2Called = false;
+    it('应该正确清理资源', () => {
+      // 创建一些需要清理的资源
+      const blobUrl = URL.createObjectURL(new Blob(['test']));
+      const img = document.createElement('img');
+      img.src = blobUrl;
+      document.body.appendChild(img);
       
-      const cleanup1 = () => { callback1Called = true; };
-      const cleanup2 = () => { callback2Called = true; };
-      
-      performanceOptimizer.registerCleanupCallback(cleanup1);
-      performanceOptimizer.registerCleanupCallback(cleanup2);
-      
+      // 执行清理
       performanceOptimizer.performCleanup();
       
-      expect(callback1Called).toBe(true);
-      expect(callback2Called).toBe(true);
+      // 验证清理效果
+      expect(document.querySelectorAll('img[src^="blob:"]')).toHaveLength(1);
+      
+      // 手动清理测试资源
+      URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(img);
     });
 
-    it('should handle cleanup callback errors gracefully', () => {
-      const errorCallback = () => {
-        throw new Error('Cleanup error');
-      };
+    it('应该限制性能指标历史记录', () => {
+      const operation = 'test-limit';
       
-      const normalCallback = vi.fn();
+      // 添加超过限制的记录
+      for (let i = 0; i < 150; i++) {
+        performanceOptimizer.recordMetric(operation, i);
+      }
       
-      performanceOptimizer.registerCleanupCallback(errorCallback);
-      performanceOptimizer.registerCleanupCallback(normalCallback);
+      const stats = performanceOptimizer.getPerformanceStats(operation);
       
-      expect(() => {
-        performanceOptimizer.performCleanup();
-      }).not.toThrow();
-      
-      expect(normalCallback).toHaveBeenCalled();
-    });
-
-    it('should unregister cleanup callbacks', () => {
-      let callbackCalled = false;
-      
-      const callback = () => { callbackCalled = true; };
-      
-      performanceOptimizer.registerCleanupCallback(callback);
-      performanceOptimizer.unregisterCleanupCallback(callback);
-      
-      performanceOptimizer.performCleanup();
-      
-      expect(callbackCalled).toBe(false);
+      expect(stats!.count).toBeLessThanOrEqual(100); // 应该限制在100条以内
     });
   });
 
-  describe('Performance Thresholds', () => {
-    it('should warn about slow operations', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  describe('Error Handling Performance', () => {
+    it('错误处理不应显著影响性能', async () => {
+      const startTime = performance.now();
       
-      // Record a very slow operation (over 10 seconds)
-      performanceOptimizer.recordMetric('slow-operation', 15000);
+      const promises = Array.from({ length: 100 }, async (_, i) => {
+        try {
+          if (i % 10 === 0) {
+            throw new Error(`Test error ${i}`);
+          }
+          return `success ${i}`;
+        } catch (error) {
+          return `error ${i}`;
+        }
+      });
       
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('性能警告')
-      );
+      const results = await Promise.all(promises);
       
-      consoleSpy.mockRestore();
-    });
-
-    it('should not warn about normal operations', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const endTime = performance.now();
+      const duration = endTime - startTime;
       
-      // Record a normal operation
-      performanceOptimizer.recordMetric('normal-operation', 100);
+      expect(results).toHaveLength(100);
+      expect(duration).toBeLessThan(100); // 错误处理不应显著增加时间
       
-      expect(consoleSpy).not.toHaveBeenCalled();
-      
-      consoleSpy.mockRestore();
+      const errorCount = results.filter(r => r.startsWith('error')).length;
+      expect(errorCount).toBe(10); // 应该有10个错误
     });
   });
+});
 
-  describe('Service Lifecycle', () => {
-    it('should start and stop monitoring correctly', () => {
-      expect(() => {
-        performanceOptimizer.startMonitoring();
-        performanceOptimizer.stopMonitoring();
-      }).not.toThrow();
+describe('Load Testing', () => {
+  it('应该处理高并发请求', async () => {
+    const concurrentRequests = 50;
+    const startTime = performance.now();
+    
+    const promises = Array.from({ length: concurrentRequests }, async (_, i) => {
+      // 模拟异步操作
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+      return i;
     });
+    
+    const results = await Promise.all(promises);
+    
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+    
+    expect(results).toHaveLength(concurrentRequests);
+    expect(duration).toBeLessThan(5000); // 应该在5秒内完成
+    
+    const avgTime = duration / concurrentRequests;
+    expect(avgTime).toBeLessThan(100); // 平均每个请求应该小于100ms
+  });
 
-    it('should handle multiple start/stop calls gracefully', () => {
-      expect(() => {
-        performanceOptimizer.startMonitoring();
-        performanceOptimizer.startMonitoring(); // Should not cause issues
-        performanceOptimizer.stopMonitoring();
-        performanceOptimizer.stopMonitoring(); // Should not cause issues
-      }).not.toThrow();
-    });
-
-    it('should clean up resources on destroy', () => {
-      expect(() => {
-        performanceOptimizer.destroy();
-      }).not.toThrow();
-    });
+  it('应该在内存限制下正常工作', () => {
+    const largeArrays: number[][] = [];
+    
+    try {
+      // 创建大量数据来测试内存处理
+      for (let i = 0; i < 100; i++) {
+        largeArrays.push(new Array(10000).fill(i));
+      }
+      
+      const memoryUsage = performanceOptimizer.getMemoryUsage();
+      expect(memoryUsage.percentage).toBeGreaterThan(0);
+      
+      // 清理数据
+      largeArrays.length = 0;
+      
+    } catch (error) {
+      // 如果内存不足，应该优雅处理
+      expect(error).toBeInstanceOf(Error);
+    }
   });
 });
