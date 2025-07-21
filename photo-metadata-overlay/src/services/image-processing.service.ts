@@ -1,7 +1,7 @@
 import { ImageProcessingService, PhotoMetadata, OverlaySettings, FrameSettings } from '../types';
 import { extractDisplayableMetadata } from '../utils/data-models.utils';
 import { brandLogoService } from './brand-logo.service';
-import { performanceOptimizer, performanceTrack, withPerformanceTracking } from './performance-optimizer.service';
+import { performanceOptimizer, withPerformanceTracking } from './performance-optimizer.service';
 
 /**
  * 图像处理服务实现
@@ -259,8 +259,10 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
       if (this.imageCache.size >= this.maxCacheSize) {
         // 删除最旧的缓存项
         const firstKey = this.imageCache.keys().next().value;
-        this.imageCache.delete(firstKey);
-        console.log(`缓存已满，删除最旧的缓存项: ${firstKey}`);
+        if (firstKey) {
+          this.imageCache.delete(firstKey);
+          console.log(`缓存已满，删除最旧的缓存项: ${firstKey}`);
+        }
       }
 
       // 添加到缓存

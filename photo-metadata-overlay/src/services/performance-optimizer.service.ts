@@ -361,7 +361,7 @@ export const performanceOptimizer = new PerformanceOptimizerService();
 
 // 性能装饰器，用于自动记录函数执行时间
 export function performanceTrack(operation: string) {
-  return function (target: any, propertyName: string, descriptor?: PropertyDescriptor) {
+  return function (target: any, _propertyName: string, descriptor?: PropertyDescriptor) {
     if (!descriptor) {
       // Handle case where descriptor is undefined
       return target;

@@ -13,25 +13,267 @@ export const mockPhotoMetadata: PhotoMetadata = {
     width: 1920,
     height: 1080,
   },
-  camera: {
+  createdAt: new Date('2024-01-15T10:30:00Z'),
+  modifiedAt: new Date('2024-01-15T10:30:00Z'),
+  exif: {
     make: 'Canon',
     model: 'EOS R5',
-  },
-  settings: {
     aperture: 'f/2.8',
     shutterSpeed: '1/125',
-    iso: 400,
+    iso: 'ISO 400',
     focalLength: '85mm',
     flash: 'Off',
+    dateTimeOriginal: '2024-01-15T10:30:00Z',
+    gps: {
+      latitude: 40.7128,
+      longitude: -74.0060,
+      altitude: 10,
+    },
+    artist: 'Test Photographer',
+    copyright: '© 2024 Test Photographer',
+    imageDescription: 'Test portrait photo',
   },
-  timestamp: new Date('2024-01-15T10:30:00Z'),
-  location: {
-    latitude: 40.7128,
-    longitude: -74.0060,
-    altitude: 10,
-    address: 'New York, NY, USA',
+};
+
+export const mockOverlaySettings: OverlaySettings = {
+  position: 'bottom-right',
+  font: {
+    family: 'Arial',
+    size: 16,
+    weight: 'normal',
+    color: '#ffffff',
   },
-  keywords: ['portrait', 'outdoor'],
-  description: 'Test portrait photo',
-  copyright: '© 2024 Test Photographer',
-};\n\nexport const mockOverlaySettings: OverlaySettings = {\n  enabled: true,\n  displayItems: {\n    camera: true,\n    settings: true,\n    timestamp: true,\n    location: false,\n    brandLogo: true,\n    customText: false,\n  },\n  position: 'bottom-right',\n  font: {\n    family: 'Arial',\n    size: 16,\n    weight: 'normal',\n    color: '#ffffff',\n  },\n  background: {\n    color: '#000000',\n    opacity: 0.7,\n    padding: 12,\n    borderRadius: 4,\n  },\n  customText: '',\n};\n\nexport const mockFrameSettings: FrameSettings = {\n  enabled: true,\n  style: 'simple',\n  color: '#ffffff',\n  width: 20,\n  opacity: 1.0,\n  customProperties: {\n    cornerRadius: 0,\n    shadowBlur: 0,\n    shadowOffset: { x: 0, y: 0 },\n  },\n};\n\n// Create mock File object\nexport function createMockFile(\n  name: string = 'test-image.jpg',\n  type: string = 'image/jpeg',\n  size: number = 1024000\n): File {\n  const content = new Uint8Array(size);\n  return new File([content], name, { type });\n}\n\n// Create mock Image element\nexport function createMockImage(\n  width: number = 1920,\n  height: number = 1080\n): HTMLImageElement {\n  const img = new Image();\n  Object.defineProperty(img, 'naturalWidth', {\n    value: width,\n    writable: false,\n  });\n  Object.defineProperty(img, 'naturalHeight', {\n    value: height,\n    writable: false,\n  });\n  Object.defineProperty(img, 'width', {\n    value: width,\n    writable: true,\n  });\n  Object.defineProperty(img, 'height', {\n    value: height,\n    writable: true,\n  });\n  return img;\n}\n\n// Create mock Canvas element\nexport function createMockCanvas(\n  width: number = 1920,\n  height: number = 1080\n): HTMLCanvasElement {\n  const canvas = document.createElement('canvas');\n  canvas.width = width;\n  canvas.height = height;\n  \n  // Mock getContext method\n  const mockContext = {\n    clearRect: vi.fn(),\n    drawImage: vi.fn(),\n    fillRect: vi.fn(),\n    fillText: vi.fn(),\n    measureText: vi.fn(() => ({ width: 100 })),\n    beginPath: vi.fn(),\n    moveTo: vi.fn(),\n    lineTo: vi.fn(),\n    quadraticCurveTo: vi.fn(),\n    closePath: vi.fn(),\n    fill: vi.fn(),\n    stroke: vi.fn(),\n    save: vi.fn(),\n    restore: vi.fn(),\n    createLinearGradient: vi.fn(() => ({\n      addColorStop: vi.fn(),\n    })),\n    imageSmoothingEnabled: true,\n    imageSmoothingQuality: 'high',\n    globalAlpha: 1,\n    fillStyle: '#000000',\n    strokeStyle: '#000000',\n    lineWidth: 1,\n    font: '16px Arial',\n    textBaseline: 'top',\n    shadowColor: 'transparent',\n    shadowBlur: 0,\n    shadowOffsetX: 0,\n    shadowOffsetY: 0,\n  };\n  \n  canvas.getContext = vi.fn(() => mockContext);\n  \n  // Mock toBlob method\n  canvas.toBlob = vi.fn((callback) => {\n    const blob = new Blob(['mock-image-data'], { type: 'image/jpeg' });\n    callback?.(blob);\n  });\n  \n  return canvas;\n}\n\n// Wait for async operations\nexport function waitFor(ms: number): Promise<void> {\n  return new Promise(resolve => setTimeout(resolve, ms));\n}\n\n// Custom render function with providers\nconst customRender = (\n  ui: ReactElement,\n  options?: Omit<RenderOptions, 'wrapper'>\n) => render(ui, { ...options });\n\nexport * from '@testing-library/react';\nexport { customRender as render };\n\n// Performance testing utilities\nexport class PerformanceMonitor {\n  private startTime: number = 0;\n  private measurements: { [key: string]: number[] } = {};\n\n  start(): void {\n    this.startTime = performance.now();\n  }\n\n  end(label: string): number {\n    const duration = performance.now() - this.startTime;\n    if (!this.measurements[label]) {\n      this.measurements[label] = [];\n    }\n    this.measurements[label].push(duration);\n    return duration;\n  }\n\n  getAverage(label: string): number {\n    const measurements = this.measurements[label];\n    if (!measurements || measurements.length === 0) return 0;\n    return measurements.reduce((a, b) => a + b, 0) / measurements.length;\n  }\n\n  getStats(label: string): { min: number; max: number; avg: number; count: number } {\n    const measurements = this.measurements[label] || [];\n    if (measurements.length === 0) {\n      return { min: 0, max: 0, avg: 0, count: 0 };\n    }\n    \n    return {\n      min: Math.min(...measurements),\n      max: Math.max(...measurements),\n      avg: this.getAverage(label),\n      count: measurements.length,\n    };\n  }\n\n  reset(): void {\n    this.measurements = {};\n  }\n}\n\n// Memory usage monitoring\nexport function getMemoryUsage(): {\n  used: number;\n  total: number;\n  percentage: number;\n} {\n  if ('memory' in performance) {\n    const memInfo = (performance as any).memory;\n    return {\n      used: memInfo.usedJSHeapSize,\n      total: memInfo.totalJSHeapSize,\n      percentage: (memInfo.usedJSHeapSize / memInfo.totalJSHeapSize) * 100,\n    };\n  }\n  \n  return { used: 0, total: 0, percentage: 0 };\n}\n\n// Create large test files for performance testing\nexport function createLargeTestFile(\n  width: number = 4000,\n  height: number = 3000,\n  name: string = 'large-test-image.jpg'\n): File {\n  // Simulate a large image file size\n  const estimatedSize = width * height * 3; // 3 bytes per pixel (RGB)\n  return createMockFile(name, 'image/jpeg', estimatedSize);\n}\n\n// Batch processing test utilities\nexport function createTestFilesBatch(count: number): PhotoMetadata[] {\n  return Array.from({ length: count }, (_, index) => ({\n    ...mockPhotoMetadata,\n    fileName: `test-image-${index + 1}.jpg`,\n    filePath: `/test/path/test-image-${index + 1}.jpg`,\n  }));\n}\n\n// Error simulation utilities\nexport function simulateNetworkError(): void {\n  // Mock fetch to throw network error\n  global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));\n}\n\nexport function simulateMemoryError(): void {\n  // Mock canvas creation to throw memory error\n  const originalCreateElement = document.createElement;\n  document.createElement = vi.fn((tagName: string) => {\n    if (tagName === 'canvas') {\n      throw new Error('Out of memory');\n    }\n    return originalCreateElement.call(document, tagName);\n  });\n}\n\nexport function restoreMocks(): void {\n  vi.restoreAllMocks();\n}\n"
+  background: {
+    color: '#000000',
+    opacity: 0.7,
+    padding: 12,
+    borderRadius: 4,
+  },
+  displayItems: {
+    brand: true,
+    model: true,
+    aperture: true,
+    shutterSpeed: true,
+    iso: true,
+    timestamp: true,
+    location: false,
+    brandLogo: true,
+  },
+};
+
+export const mockFrameSettings: FrameSettings = {
+  enabled: true,
+  style: 'simple',
+  color: '#ffffff',
+  width: 20,
+  opacity: 1.0,
+  customProperties: {
+    cornerRadius: 0,
+    shadowBlur: 0,
+    shadowOffset: { x: 0, y: 0 },
+  },
+};
+
+// Create mock File object
+export function createMockFile(
+  name: string = 'test-image.jpg',
+  type: string = 'image/jpeg',
+  size: number = 1024000
+): File {
+  const content = new Uint8Array(size);
+  return new File([content], name, { type });
+}
+
+// Create mock Image element
+export function createMockImage(
+  width: number = 1920,
+  height: number = 1080
+): HTMLImageElement {
+  const img = new Image();
+  Object.defineProperty(img, 'naturalWidth', {
+    value: width,
+    writable: false,
+  });
+  Object.defineProperty(img, 'naturalHeight', {
+    value: height,
+    writable: false,
+  });
+  Object.defineProperty(img, 'width', {
+    value: width,
+    writable: true,
+  });
+  Object.defineProperty(img, 'height', {
+    value: height,
+    writable: true,
+  });
+  return img;
+}
+
+// Create mock Canvas element
+export function createMockCanvas(
+  width: number = 1920,
+  height: number = 1080
+): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  
+  // Mock getContext method
+  const mockContext = {
+    clearRect: vi.fn(),
+    drawImage: vi.fn(),
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    measureText: vi.fn(() => ({ width: 100 })),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    createLinearGradient: vi.fn(() => ({
+      addColorStop: vi.fn(),
+    })),
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+    globalAlpha: 1,
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    lineWidth: 1,
+    font: '16px Arial',
+    textBaseline: 'top',
+    shadowColor: 'transparent',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+  };
+  
+  canvas.getContext = vi.fn(() => mockContext as any);
+  
+  // Mock toBlob method
+  canvas.toBlob = vi.fn((callback) => {
+    const blob = new Blob(['mock-image-data'], { type: 'image/jpeg' });
+    callback?.(blob);
+  });
+  
+  return canvas;
+}
+
+// Wait for async operations
+export function waitFor(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Custom render function with providers
+const customRender = (
+  ui: ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>
+) => render(ui, { ...options });
+
+export * from '@testing-library/react';
+export { customRender as render };
+
+// Performance testing utilities
+export class PerformanceMonitor {
+  private startTime: number = 0;
+  private measurements: { [key: string]: number[] } = {};
+
+  start(): void {
+    this.startTime = performance.now();
+  }
+
+  end(label: string): number {
+    const duration = performance.now() - this.startTime;
+    if (!this.measurements[label]) {
+      this.measurements[label] = [];
+    }
+    this.measurements[label].push(duration);
+    return duration;
+  }
+
+  getAverage(label: string): number {
+    const measurements = this.measurements[label];
+    if (!measurements || measurements.length === 0) return 0;
+    return measurements.reduce((a, b) => a + b, 0) / measurements.length;
+  }
+
+  getStats(label: string): { min: number; max: number; avg: number; count: number } {
+    const measurements = this.measurements[label] || [];
+    if (measurements.length === 0) {
+      return { min: 0, max: 0, avg: 0, count: 0 };
+    }
+    
+    return {
+      min: Math.min(...measurements),
+      max: Math.max(...measurements),
+      avg: this.getAverage(label),
+      count: measurements.length,
+    };
+  }
+
+  reset(): void {
+    this.measurements = {};
+  }
+}
+
+// Memory usage monitoring
+export function getMemoryUsage(): {
+  used: number;
+  total: number;
+  percentage: number;
+} {
+  if ('memory' in performance) {
+    const memInfo = (performance as any).memory;
+    return {
+      used: memInfo.usedJSHeapSize,
+      total: memInfo.totalJSHeapSize,
+      percentage: (memInfo.usedJSHeapSize / memInfo.totalJSHeapSize) * 100,
+    };
+  }
+  
+  return { used: 0, total: 0, percentage: 0 };
+}
+
+// Create large test files for performance testing
+export function createLargeTestFile(
+  width: number = 4000,
+  height: number = 3000,
+  name: string = 'large-test-image.jpg'
+): File {
+  // Simulate a large image file size
+  const estimatedSize = width * height * 3; // 3 bytes per pixel (RGB)
+  return createMockFile(name, 'image/jpeg', estimatedSize);
+}
+
+// Batch processing test utilities
+export function createTestFilesBatch(count: number): PhotoMetadata[] {
+  return Array.from({ length: count }, (_, index) => ({
+    ...mockPhotoMetadata,
+    fileName: `test-image-${index + 1}.jpg`,
+    filePath: `/test/path/test-image-${index + 1}.jpg`,
+  }));
+}
+
+// Error simulation utilities
+export function simulateNetworkError(): void {
+  // Mock fetch to throw network error
+  global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+}
+
+export function simulateMemoryError(): void {
+  // Mock canvas creation to throw memory error
+  const originalCreateElement = document.createElement;
+  document.createElement = vi.fn((tagName: string) => {
+    if (tagName === 'canvas') {
+      throw new Error('Out of memory');
+    }
+    return originalCreateElement.call(document, tagName);
+  });
+}
+
+export function restoreMocks(): void {
+  vi.restoreAllMocks();
+}
