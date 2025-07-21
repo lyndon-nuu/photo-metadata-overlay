@@ -11,9 +11,12 @@ import { BatchProcessor } from './components/BatchProcessor/BatchProcessor';
 
 import { LoadingSpinner } from './components/UI/LoadingSpinner';
 import { ToastContainer } from './components/UI/Toast';
+import { StatusBar, StatusBarContainer } from './components/StatusBar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFileManager } from './hooks/useFileManager';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useToast } from './hooks/useToast';
+import { useAppStatus } from './hooks/useAppStatus';
 import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings } from './types';
 import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from './constants/design-tokens';
 import { storageService } from './services/storage.service';
@@ -48,6 +51,15 @@ function App() {
   
   // Toast通知Hook
   const { toasts, removeToast, success } = useToast();
+  
+  // 应用状态管理Hook
+  const { 
+    currentStatus, 
+    setLoading, 
+    setSuccess, 
+    setError, 
+    setIdle
+  } = useAppStatus();
 
   // 初始化时加载设置
   useEffect(() => {
@@ -93,35 +105,43 @@ function App() {
   const stats = getFileStats();
 
   const handleFileSelection = (event: FileSelectedEvent) => {
-    // Store original File objects in the map
-    const newFileMap = new Map(fileMap);
-    event.files.forEach(file => {
-      newFileMap.set(file.name, file);
-    });
-    setFileMap(newFileMap);
-    
-    handleFilesSelected(event);
-    
-    // 显示成功通知
-    if (event.files.length > 0) {
-      success(
-        '文件加载成功',
-        `已成功加载 ${event.files.length} 个文件`
-      );
-    }
-    
-    // Auto-select first file for preview
-    if (event.files.length > 0 && !selectedFile) {
-      const firstFile = event.files[0];
-      setSelectedFile(firstFile);
+    try {
+      setLoading('正在加载文件...');
       
-      // Find corresponding PhotoMetadata (may not be available immediately due to async processing)
-      setTimeout(() => {
-        const photoMetadata = selectedFiles.find(f => f.fileName === firstFile.name);
-        if (photoMetadata) {
-          setSelectedPhoto(photoMetadata);
-        }
-      }, 100);
+      // Store original File objects in the map
+      const newFileMap = new Map(fileMap);
+      event.files.forEach(file => {
+        newFileMap.set(file.name, file);
+      });
+      setFileMap(newFileMap);
+      
+      handleFilesSelected(event);
+      
+      // 显示成功通知和状态
+      if (event.files.length > 0) {
+        setSuccess(`已成功加载 ${event.files.length} 个文件`);
+        success(
+          '文件加载成功',
+          `已成功加载 ${event.files.length} 个文件`
+        );
+      }
+      
+      // Auto-select first file for preview
+      if (event.files.length > 0 && !selectedFile) {
+        const firstFile = event.files[0];
+        setSelectedFile(firstFile);
+        
+        // Find corresponding PhotoMetadata (may not be available immediately due to async processing)
+        setTimeout(() => {
+          const photoMetadata = selectedFiles.find(f => f.fileName === firstFile.name);
+          if (photoMetadata) {
+            setSelectedPhoto(photoMetadata);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      setError('文件加载失败，请重试');
+      console.error('文件选择错误:', error);
     }
   };
 
@@ -151,16 +171,17 @@ function App() {
   };
 
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 8,
-          fontSize: 14,
-        },
-      }}
-    >
-      <div className="min-h-screen bg-gray-50">
+    <ErrorBoundary>
+      <ConfigProvider
+        theme={{
+          token: {
+            colorPrimary: '#1890ff',
+            borderRadius: 8,
+            fontSize: 14,
+          },
+        }}
+      >
+        <div className="min-h-screen bg-gray-50">
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -577,8 +598,24 @@ function App() {
           onClose={removeToast} 
           position="top-right" 
         />
+        
+        {/* Status Bar */}
+        <AnimatePresence>
+          {currentStatus.type !== 'idle' && (
+            <StatusBarContainer>
+              <StatusBar
+                status={currentStatus.type}
+                message={currentStatus.message}
+                progress={currentStatus.progress}
+                showProgress={currentStatus.type === 'loading' && typeof currentStatus.progress === 'number'}
+                onClose={() => setIdle()}
+              />
+            </StatusBarContainer>
+          )}
+        </AnimatePresence>
       </div>
     </ConfigProvider>
+    </ErrorBoundary>
   );
 }
 

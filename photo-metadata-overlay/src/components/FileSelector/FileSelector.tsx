@@ -2,7 +2,7 @@ import React, { useCallback, useState, useRef } from 'react';
 import { Upload, FolderOpen, Image, X, AlertCircle } from 'lucide-react';
 import { FileDropzoneProps, FileSelectedEvent, PhotoMetadata } from '../../types';
 import { isValidImageFile, isValidFileExtension } from '../../utils/data-models.utils';
-import { validateFiles, FileValidationOptions } from '../../utils/file-validation.utils';
+import { validateFiles } from '../../utils/file-validation.utils';
 import { SUPPORTED_FILE_EXTENSIONS } from '../../constants/design-tokens';
 
 interface FileSelectorProps extends Omit<FileDropzoneProps, 'onFilesSelected'> {
@@ -34,17 +34,12 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
 
   // 处理文件验证
   const validateSelectedFiles = useCallback(async (files: File[]): Promise<{ valid: File[]; errors: string[] }> => {
-    const validationOptions: FileValidationOptions = {
-      maxFileSize: maxSize,
-      checkImageDimensions: false, // 暂时不检查尺寸以提高性能
-    };
-
     try {
-      const result = await validateFiles(files, validationOptions);
-      const errorMessages = result.errors.map(error => error.message);
+      const result = validateFiles(files);
+      const errorMessages = result.totalErrors.map((error: any) => error.message);
       
       return {
-        valid: result.valid,
+        valid: result.validFiles,
         errors: errorMessages,
       };
     } catch (error) {
