@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { PhotoMetadata, OverlaySettings, FrameSettings } from '../types';
 import { imageProcessingService } from '../services/image-processing.service';
+import { performanceOptimizer } from '../services/performance-optimizer.service';
 
 export interface BatchProcessingProgress {
   current: number;
@@ -249,6 +250,14 @@ export function useBatchProcessor(options: UseBatchProcessorOptions = {}) {
 
     // 创建AbortController用于取消操作
     abortControllerRef.current = new AbortController();
+
+    // 根据系统性能动态调整并发数
+    const optimalConcurrency = Math.min(
+      concurrency || performanceOptimizer.getRecommendedConcurrency(),
+      files.length
+    );
+    
+    console.log(`开始批量处理 ${files.length} 个文件，并发数: ${optimalConcurrency}`);
 
     updateProgress(0, files.length, '', 'processing');
 

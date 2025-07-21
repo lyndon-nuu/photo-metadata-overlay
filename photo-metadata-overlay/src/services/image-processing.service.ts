@@ -1,14 +1,20 @@
 import { ImageProcessingService, PhotoMetadata, OverlaySettings, FrameSettings } from '../types';
 import { extractDisplayableMetadata } from '../utils/data-models.utils';
 import { brandLogoService } from './brand-logo.service';
+import { performanceOptimizer, performanceTrack, withPerformanceTracking } from './performance-optimizer.service';
 
 /**
  * 图像处理服务实现
  * 提供图像加载、叠加处理、相框效果和导出功能
+ * 包含性能优化和内存管理功能
  */
 export class ImageProcessingServiceImpl implements ImageProcessingService {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private imageCache: Map<string, HTMLImageElement> = new Map();
+  private maxCacheSize: number = 10; // 最大缓存图片数量
+  private maxImageDimension: number = 4096; // 最大图像尺寸（像素）
+  private processingQueue: Set<string> = new Set(); // 正在处理的文件队列
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -21,54 +27,253 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
     // 设置高质量渲染
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = 'high';
+    
+    // 监听内存压力事件
+    this.setupMemoryManagement();
+    
+    // 注册性能优化器的清理回调
+    performanceOptimizer.registerCleanupCallback(() => {
+      this.clearImageCache();
+    });
+    
+    // 启动性能监控
+    performanceOptimizer.startMonitoring();
   }
 
   /**
-   * 从文件加载图像
+   * 设置内存管理
+   */
+  private setupMemoryManagement(): void {
+    // 监听内存压力事件（如果支持）
+    if ('memory' in performance) {
+      const checkMemory = () => {
+        const memInfo = (performance as any).memory;
+        if (memInfo && memInfo.usedJSHeapSize > memInfo.jsHeapSizeLimit * 0.8) {
+          console.warn('内存使用率过高，清理缓存');
+          this.clearImageCache();
+        }
+      };
+      
+      // 每30秒检查一次内存使用情况
+      setInterval(checkMemory, 30000);
+    }
+
+    // 监听页面可见性变化，在页面隐藏时清理缓存
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.clearImageCache();
+      }
+    });
+  }
+
+  /**
+   * 清理图像缓存
+   */
+  private clearImageCache(): void {
+    console.log(`清理图像缓存，释放 ${this.imageCache.size} 个缓存项`);
+    this.imageCache.clear();
+    
+    // 强制垃圾回收（如果支持）
+    if ('gc' in window) {
+      (window as any).gc();
+    }
+  }
+
+  /**
+   * 检查是否需要调整图像尺寸
+   * @param image 图像元素
+   * @returns 是否需要调整尺寸
+   */
+  private shouldResizeImage(image: HTMLImageElement): boolean {
+    const maxDimension = this.maxImageDimension;
+    return image.naturalWidth > maxDimension || image.naturalHeight > maxDimension;
+  }
+
+  /**
+   * 调整图像尺寸以优化性能
+   * @param image 原始图像
+   * @returns 调整后的图像
+   */
+  private async resizeImageForPerformance(image: HTMLImageElement): Promise<HTMLImageElement> {
+    const maxDimension = this.maxImageDimension;
+    const { naturalWidth, naturalHeight } = image;
+    
+    // 计算新尺寸，保持宽高比
+    let newWidth = naturalWidth;
+    let newHeight = naturalHeight;
+    
+    if (naturalWidth > naturalHeight) {
+      if (naturalWidth > maxDimension) {
+        newWidth = maxDimension;
+        newHeight = (naturalHeight * maxDimension) / naturalWidth;
+      }
+    } else {
+      if (naturalHeight > maxDimension) {
+        newHeight = maxDimension;
+        newWidth = (naturalWidth * maxDimension) / naturalHeight;
+      }
+    }
+    
+    // 如果尺寸没有变化，直接返回原图
+    if (newWidth === naturalWidth && newHeight === naturalHeight) {
+      return image;
+    }
+    
+    console.log(`调整图像尺寸: ${naturalWidth}x${naturalHeight} -> ${Math.round(newWidth)}x${Math.round(newHeight)}`);
+    
+    // 创建临时Canvas进行尺寸调整
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    if (!tempCtx) {
+      throw new Error('无法创建临时Canvas上下文');
+    }
+    
+    tempCanvas.width = Math.round(newWidth);
+    tempCanvas.height = Math.round(newHeight);
+    
+    // 设置高质量缩放
+    tempCtx.imageSmoothingEnabled = true;
+    tempCtx.imageSmoothingQuality = 'high';
+    
+    // 绘制调整后的图像
+    tempCtx.drawImage(image, 0, 0, newWidth, newHeight);
+    
+    // 将Canvas转换为图像
+    return new Promise((resolve, reject) => {
+      tempCanvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('图像尺寸调整失败'));
+          return;
+        }
+        
+        const resizedImage = new Image();
+        const url = URL.createObjectURL(blob);
+        
+        resizedImage.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(resizedImage);
+        };
+        
+        resizedImage.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('调整后的图像加载失败'));
+        };
+        
+        resizedImage.src = url;
+      }, 'image/jpeg', 0.9);
+    });
+  }
+
+  /**
+   * 从文件加载图像（带性能优化）
    * @param file 图像文件
    * @returns Promise<HTMLImageElement> 加载的图像元素
    */
   async loadImage(file: File): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
+    return withPerformanceTracking('image-loading', async () => {
+      // 生成文件缓存键
+    const cacheKey = `${file.name}_${file.size}_${file.lastModified}`;
+    
+    // 检查缓存
+    if (this.imageCache.has(cacheKey)) {
+      console.log(`从缓存加载图像: ${file.name}`);
+      return this.imageCache.get(cacheKey)!;
+    }
+
+    // 检查是否正在处理中
+    if (this.processingQueue.has(cacheKey)) {
+      // 等待处理完成
+      return new Promise((resolve, reject) => {
+        const checkInterval = setInterval(() => {
+          if (!this.processingQueue.has(cacheKey)) {
+            clearInterval(checkInterval);
+            if (this.imageCache.has(cacheKey)) {
+              resolve(this.imageCache.get(cacheKey)!);
+            } else {
+              reject(new Error('图像处理失败'));
+            }
+          }
+        }, 100);
+        
+        // 设置超时
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          reject(new Error('图像处理超时'));
+        }, 30000);
+      });
+    }
+
+    // 添加到处理队列
+    this.processingQueue.add(cacheKey);
+
+    try {
       // 验证文件类型
       if (!file.type.startsWith('image/')) {
-        reject(new Error(`不支持的文件类型: ${file.type}。请使用图像文件。`));
-        return;
+        throw new Error(`不支持的文件类型: ${file.type}。请使用图像文件。`);
       }
 
       // 验证文件大小 (限制为50MB)
       const maxSize = 50 * 1024 * 1024;
       if (file.size > maxSize) {
-        reject(new Error(`文件过大: ${(file.size / 1024 / 1024).toFixed(1)}MB。最大支持50MB。`));
-        return;
+        throw new Error(`文件过大: ${(file.size / 1024 / 1024).toFixed(1)}MB。最大支持50MB。`);
       }
 
       console.log(`正在加载图像: ${file.name}, 类型: ${file.type}, 大小: ${(file.size / 1024).toFixed(1)}KB`);
 
-      const img = new Image();
-      const url = URL.createObjectURL(file);
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        const url = URL.createObjectURL(file);
 
-      // 设置超时处理
-      const timeout = setTimeout(() => {
-        URL.revokeObjectURL(url);
-        reject(new Error(`图像加载超时: ${file.name}。请检查文件是否完整。`));
-      }, 30000); // 30秒超时
+        // 设置超时处理
+        const timeout = setTimeout(() => {
+          URL.revokeObjectURL(url);
+          reject(new Error(`图像加载超时: ${file.name}。请检查文件是否完整。`));
+        }, 30000); // 30秒超时
 
-      img.onload = () => {
-        clearTimeout(timeout);
-        console.log(`图像加载成功: ${file.name}, 尺寸: ${img.naturalWidth}x${img.naturalHeight}`);
-        URL.revokeObjectURL(url);
-        resolve(img);
-      };
+        image.onload = () => {
+          clearTimeout(timeout);
+          console.log(`图像加载成功: ${file.name}, 尺寸: ${image.naturalWidth}x${image.naturalHeight}`);
+          URL.revokeObjectURL(url);
+          resolve(image);
+        };
 
-      img.onerror = (event) => {
-        clearTimeout(timeout);
-        console.error(`图像加载失败: ${file.name}`, event);
-        URL.revokeObjectURL(url);
-        reject(new Error(`无法加载图像: ${file.name}。可能的原因：文件损坏、格式不支持或浏览器限制。`));
-      };
+        image.onerror = (event) => {
+          clearTimeout(timeout);
+          console.error(`图像加载失败: ${file.name}`, event);
+          URL.revokeObjectURL(url);
+          reject(new Error(`无法加载图像: ${file.name}。可能的原因：文件损坏、格式不支持或浏览器限制。`));
+        };
 
-      img.src = url;
+        image.src = url;
+      });
+
+      // 检查是否需要调整尺寸以优化性能
+      let finalImage = img;
+      if (this.shouldResizeImage(img)) {
+        console.log(`图像尺寸过大，进行性能优化调整`);
+        finalImage = await this.resizeImageForPerformance(img);
+      }
+
+      // 管理缓存大小
+      if (this.imageCache.size >= this.maxCacheSize) {
+        // 删除最旧的缓存项
+        const firstKey = this.imageCache.keys().next().value;
+        this.imageCache.delete(firstKey);
+        console.log(`缓存已满，删除最旧的缓存项: ${firstKey}`);
+      }
+
+      // 添加到缓存
+      this.imageCache.set(cacheKey, finalImage);
+      console.log(`图像已缓存: ${file.name}`);
+
+      return finalImage;
+    } catch (error) {
+      throw error;
+    } finally {
+      // 从处理队列中移除
+      this.processingQueue.delete(cacheKey);
+    }
     });
   }
 
@@ -84,26 +289,28 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
     metadata: PhotoMetadata,
     settings: OverlaySettings
   ): Promise<HTMLCanvasElement> {
-    // 设置Canvas尺寸与原图相同
-    this.canvas.width = image.naturalWidth;
-    this.canvas.height = image.naturalHeight;
+    return withPerformanceTracking('overlay-processing', async () => {
+      // 设置Canvas尺寸与原图相同
+      this.canvas.width = image.naturalWidth;
+      this.canvas.height = image.naturalHeight;
 
-    // 清空Canvas并绘制原图
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.drawImage(image, 0, 0);
+      // 清空Canvas并绘制原图
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.drawImage(image, 0, 0);
 
-    // 提取要显示的元数据
-    const displayData = extractDisplayableMetadata(metadata, settings.displayItems);
-    
-    if (Object.keys(displayData).length === 0) {
-      // 如果没有要显示的数据，直接返回原图
+      // 提取要显示的元数据
+      const displayData = extractDisplayableMetadata(metadata, settings.displayItems);
+      
+      if (Object.keys(displayData).length === 0) {
+        // 如果没有要显示的数据，直接返回原图
+        return this.canvas;
+      }
+
+      // 应用叠加效果
+      await this.renderOverlay(displayData, settings);
+
       return this.canvas;
-    }
-
-    // 应用叠加效果
-    await this.renderOverlay(displayData, settings);
-
-    return this.canvas;
+    });
   }
 
   /**
@@ -116,36 +323,38 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
     canvas: HTMLCanvasElement,
     frameSettings: FrameSettings
   ): Promise<HTMLCanvasElement> {
-    if (!frameSettings.enabled) {
-      return canvas;
-    }
+    return withPerformanceTracking('frame-processing', async () => {
+      if (!frameSettings.enabled) {
+        return canvas;
+      }
 
-    const originalWidth = canvas.width;
-    const originalHeight = canvas.height;
-    const frameWidth = frameSettings.width;
+      const originalWidth = canvas.width;
+      const originalHeight = canvas.height;
+      const frameWidth = frameSettings.width;
 
-    // 创建新的Canvas，尺寸包含相框
-    const framedCanvas = document.createElement('canvas');
-    const framedCtx = framedCanvas.getContext('2d');
-    
-    if (!framedCtx) {
-      throw new Error('无法创建相框Canvas上下文');
-    }
+      // 创建新的Canvas，尺寸包含相框
+      const framedCanvas = document.createElement('canvas');
+      const framedCtx = framedCanvas.getContext('2d');
+      
+      if (!framedCtx) {
+        throw new Error('无法创建相框Canvas上下文');
+      }
 
-    framedCanvas.width = originalWidth + frameWidth * 2;
-    framedCanvas.height = originalHeight + frameWidth * 2;
+      framedCanvas.width = originalWidth + frameWidth * 2;
+      framedCanvas.height = originalHeight + frameWidth * 2;
 
-    // 设置高质量渲染
-    framedCtx.imageSmoothingEnabled = true;
-    framedCtx.imageSmoothingQuality = 'high';
+      // 设置高质量渲染
+      framedCtx.imageSmoothingEnabled = true;
+      framedCtx.imageSmoothingQuality = 'high';
 
-    // 根据相框样式渲染
-    await this.renderFrame(framedCtx, framedCanvas.width, framedCanvas.height, frameSettings);
+      // 根据相框样式渲染
+      await this.renderFrame(framedCtx, framedCanvas.width, framedCanvas.height, frameSettings);
 
-    // 绘制原图到相框中心
-    framedCtx.drawImage(canvas, frameWidth, frameWidth);
+      // 绘制原图到相框中心
+      framedCtx.drawImage(canvas, frameWidth, frameWidth);
 
-    return framedCanvas;
+      return framedCanvas;
+    });
   }
 
   /**
@@ -160,20 +369,22 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
     format: 'jpeg' | 'png',
     quality: number = 0.9
   ): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-      
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('图像导出失败'));
-          }
-        },
-        mimeType,
-        quality
-      );
+    return withPerformanceTracking('image-export', async () => {
+      return new Promise<Blob>((resolve, reject) => {
+        const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('图像导出失败'));
+            }
+          },
+          mimeType,
+          quality
+        );
+      });
     });
   }
 
