@@ -281,7 +281,7 @@ function App() {
           },
         }}
       >
-        <div className="min-h-screen bg-gray-50">
+        <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
         {/* 增强的工具栏 */}
         <EnhancedToolbar
           onOpenFile={() => {
@@ -379,7 +379,7 @@ function App() {
           }}
         />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 px-4 py-4 overflow-hidden">
           <AnimatePresence>
             {isLoading && (
               <motion.div 
@@ -415,19 +415,15 @@ function App() {
             )}
           </AnimatePresence>
 
-          <motion.div 
-            className="grid grid-cols-1 xl:grid-cols-3 gap-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, staggerChildren: 0.1 }}
-          >
+          <div className="flex h-full gap-4 min-h-0">
             {/* Left Panel - File Selection and Management */}
             <motion.div 
-              className="space-y-6"
+              className="w-80 lg:w-72 xl:w-80 flex-shrink-0 flex flex-col h-full min-h-0"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
+              <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-2 min-h-0">
               <motion.div 
                 className="card"
                 whileHover={{ scale: 1.02 }}
@@ -565,18 +561,19 @@ function App() {
                   </motion.div>
                 )}
               </AnimatePresence>
+              </div>
             </motion.div>
 
             {/* Center Panel - Real-time Preview */}
             <motion.div 
-              className="xl:col-span-2"
+              className="flex-1 min-w-0 mx-4"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
               <motion.div 
-                className="card h-full"
-                whileHover={{ scale: 1.01 }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 h-full overflow-hidden"
+                whileHover={{ scale: 1.005 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 <ImagePreview
@@ -585,18 +582,19 @@ function App() {
                   overlaySettings={overlaySettings}
                   frameSettings={frameSettings}
                   onProcessingComplete={handleProcessingComplete}
-                  className="h-full min-h-[600px]"
+                  className="h-full"
                 />
               </motion.div>
             </motion.div>
 
             {/* Right Panel - Settings */}
             <motion.div 
-              className="xl:col-start-1 xl:row-start-2 space-y-6"
+              className="w-72 flex-shrink-0 flex flex-col h-full"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
+              <div className="space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pl-2">
               <motion.div 
                 className="card"
                 whileHover={{ scale: 1.02 }}
@@ -657,8 +655,9 @@ function App() {
                   </motion.div>
                 )}
               </AnimatePresence>
+              </div>
             </motion.div>
-          </motion.div>
+          </div>
         </main>
 
         {/* Settings Manager Modal */}
@@ -789,7 +788,7 @@ function App() {
         <ToastContainer 
           toasts={toasts} 
           onClose={removeToast} 
-          position="top-right" 
+          position="top-center" 
         />
         
         {/* Status Bar */}

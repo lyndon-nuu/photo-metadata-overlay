@@ -178,9 +178,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
       </div>
 
       {/* 工具栏 */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="space-y-4 mb-6">
         {/* 搜索框 */}
-        <div className="relative flex-1">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -195,69 +195,72 @@ export const FileManager: React.FC<FileManagerProps> = ({
           />
         </div>
 
-        {/* 视图切换 */}
-        <div className="flex rounded-md border border-gray-300 dark:border-gray-600">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`
-              px-3 py-2 text-sm font-medium rounded-l-md transition-colors
-              ${viewMode === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }
-            `}
-          >
-            <List className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`
-              px-3 py-2 text-sm font-medium rounded-r-md border-l border-gray-300 dark:border-gray-600 transition-colors
-              ${viewMode === 'grid'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }
-            `}
-          >
-            <Grid className="w-4 h-4" />
-          </button>
-        </div>
+        {/* 视图切换和操作按钮 */}
+        <div className="flex flex-col sm:flex-row justify-between gap-3">
+          {/* 视图切换 */}
+          <div className="flex rounded-md border border-gray-300 dark:border-gray-600 w-fit">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`
+                px-3 py-2 text-sm font-medium rounded-l-md transition-colors
+                ${viewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }
+              `}
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`
+                px-3 py-2 text-sm font-medium rounded-r-md border-l border-gray-300 dark:border-gray-600 transition-colors
+                ${viewMode === 'grid'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }
+              `}
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+          </div>
 
-        {/* 操作按钮 */}
-        <div className="flex gap-2">
-          {onExportList && (
-            <button
-              onClick={onExportList}
-              disabled={files.length === 0}
-              className="
-                inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600
-                rounded-md text-sm font-medium text-gray-700 dark:text-gray-200
-                bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              <Download className="w-4 h-4 mr-2" />
-              导出列表
-            </button>
-          )}
-          
-          {onClearAll && (
-            <button
-              onClick={onClearAll}
-              disabled={files.length === 0 || isProcessing}
-              className="
-                inline-flex items-center px-3 py-2 border border-red-300 dark:border-red-600
-                rounded-md text-sm font-medium text-red-700 dark:text-red-200
-                bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              <X className="w-4 h-4 mr-2" />
-              清空全部
-            </button>
-          )}
+          {/* 操作按钮 */}
+          <div className="flex flex-wrap gap-2">
+            {onExportList && (
+              <button
+                onClick={onExportList}
+                disabled={files.length === 0}
+                className="
+                  inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600
+                  rounded-md text-sm font-medium text-gray-700 dark:text-gray-200
+                  bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                  disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap
+                "
+              >
+                <Download className="w-4 h-4 mr-2" />
+                导出列表
+              </button>
+            )}
+            
+            {onClearAll && (
+              <button
+                onClick={onClearAll}
+                disabled={files.length === 0 || isProcessing}
+                className="
+                  inline-flex items-center px-3 py-2 border border-red-300 dark:border-red-600
+                  rounded-md text-sm font-medium text-red-700 dark:text-red-200
+                  bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500
+                  disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap
+                "
+              >
+                <X className="w-4 h-4 mr-2" />
+                清空全部
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
