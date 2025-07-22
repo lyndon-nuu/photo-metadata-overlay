@@ -157,10 +157,13 @@ function App() {
       // 显示成功通知和状态
       if (event.files.length > 0) {
         setSuccess(`已成功加载 ${event.files.length} 个文件`);
-        success(
-          '文件加载成功',
-          `已成功加载 ${event.files.length} 个文件`
-        );
+        // 只在加载多个文件时显示通知
+        if (event.files.length > 1) {
+          success(
+            '批量文件加载成功',
+            `已成功加载 ${event.files.length} 个文件`
+          );
+        }
       }
       
       // Auto-select first file for preview
@@ -204,7 +207,10 @@ function App() {
 
   const handleProcessingComplete = (blob: Blob) => {
     setProcessedBlob(blob);
-    success('图像处理完成', '图像已成功处理，可以下载了');
+    // 只在首次处理完成时显示通知，避免设置更改时重复通知
+    if (!processedBlob) {
+      success('图像处理完成', '图像已成功处理，可以下载了');
+    }
   };
 
   // 用户体验功能处理函数

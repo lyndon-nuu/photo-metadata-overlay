@@ -7,6 +7,7 @@ import { ToastData, ToastType } from '../components/UI/Toast';
  */
 export const useToast = () => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const MAX_TOASTS = 3; // 最多同时显示3个通知
 
   const addToast = useCallback((
     type: ToastType,
@@ -18,21 +19,39 @@ export const useToast = () => {
         label: string;
         onClick: () => void;
       };
+      preventDuplicate?: boolean;
     }
   ) => {
+    // 检查是否有重复的通知
+    if (options?.preventDuplicate !== false) {
+      const isDuplicate = toasts.some(toast => 
+        toast.title === title && toast.message === message && toast.type === type
+      );
+      if (isDuplicate) {
+        return null;
+      }
+    }
+
     const id = Math.random().toString(36).substr(2, 9);
     const newToast: ToastData = {
       id,
       type,
       title,
       message,
-      duration: options?.duration ?? (type === 'error' ? 0 : 5000), // 错误消息不自动消失
+      duration: options?.duration ?? (type === 'error' ? 0 : 3000), // 缩短默认显示时间
       action: options?.action,
     };
 
-    setToasts(prev => [...prev, newToast]);
+    setToasts(prev => {
+      const newToasts = [...prev, newToast];
+      // 如果超过最大数量，移除最旧的通知
+      if (newToasts.length > MAX_TOASTS) {
+        return newToasts.slice(-MAX_TOASTS);
+      }
+      return newToasts;
+    });
     return id;
-  }, []);
+  }, [toasts]);
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));

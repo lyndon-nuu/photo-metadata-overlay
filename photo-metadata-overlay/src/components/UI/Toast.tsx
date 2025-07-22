@@ -79,31 +79,42 @@ const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
       {isVisible && (
         <motion.div
           className={cn(
-            'max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 border',
+            'min-w-96 max-w-2xl w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 border',
             getColorClasses()
           )}
-          initial={{ opacity: 0, y: 50, scale: 0.3 }}
+          initial={{ opacity: 0, y: -50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          exit={{ opacity: 0, y: -50, scale: 0.95, transition: { duration: 0.2 } }}
+          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           layout
         >
-          <div className="p-4">
-            <div className="flex items-start">
+          <div className="px-4 py-3">
+            <div className="flex items-center">
               <div className="flex-shrink-0">
                 {getIcon()}
               </div>
-              <div className="ml-3 w-0 flex-1 pt-0.5">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {toast.title}
-                </p>
+              <div className="ml-3 flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {toast.title}
+                  </p>
+                  <motion.button
+                    className="ml-4 flex-shrink-0 bg-white dark:bg-gray-800 rounded-md inline-flex text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    onClick={handleClose}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <span className="sr-only">关闭</span>
+                    <X className="h-4 w-4" />
+                  </motion.button>
+                </div>
                 {toast.message && (
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 truncate">
                     {toast.message}
                   </p>
                 )}
                 {toast.action && (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <motion.button
                       className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
                       onClick={toast.action.onClick}
@@ -114,17 +125,6 @@ const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
                     </motion.button>
                   </div>
                 )}
-              </div>
-              <div className="ml-4 flex-shrink-0 flex">
-                <motion.button
-                  className="bg-white dark:bg-gray-800 rounded-md inline-flex text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  onClick={handleClose}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <span className="sr-only">关闭</span>
-                  <X className="h-5 w-5" />
-                </motion.button>
               </div>
             </div>
           </div>
@@ -151,11 +151,11 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
   const getPositionClasses = () => {
     switch (position) {
       case 'top-right':
-        return 'top-0 right-0';
+        return 'top-0 right-80';
       case 'top-left':
         return 'top-0 left-0';
       case 'bottom-right':
-        return 'bottom-0 right-0';
+        return 'bottom-0 right-80';
       case 'bottom-left':
         return 'bottom-0 left-0';
       case 'top-center':
@@ -163,7 +163,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
       case 'bottom-center':
         return 'bottom-0 left-1/2 transform -translate-x-1/2';
       default:
-        return 'top-0 right-0';
+        return 'top-0 right-80';
     }
   };
 
