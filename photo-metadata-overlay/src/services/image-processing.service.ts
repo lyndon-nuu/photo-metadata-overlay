@@ -161,7 +161,7 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
         };
         
         resizedImage.src = url;
-      }, 'image/jpeg', 0.9);
+      }, 'image/png', 1.0); // 临时调整使用PNG无损格式
     });
   }
 

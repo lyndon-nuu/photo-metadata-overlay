@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后端API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { border-color: #28a745; background-color: #d4edda; }
+        .error { border-color: #dc3545; background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>🧪 后端图像处理API测试</h1>
+    
+    <div class="test-section">
+        <h2>基础连接测试</h2>
+        <button class="test-button" onclick="testGreet()">测试Greet命令</button>
+        <div id="greet-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>文件验证测试</h2>
+        <button class="test-button" onclick="testFileValidation()">测试文件格式验证</button>
+        <div id="validation-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>EXIF数据提取测试</h2>
+        <input type="file" id="imageFile" accept="image/*" />
+        <button class="test-button" onclick="testExifExtraction()">提取EXIF数据</button>
+        <div id="exif-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>文件保存对话框测试</h2>
+        <p>这个测试会调用新的文件保存对话框功能</p>
+        <button class="test-button" onclick="testFileSaveDialog()">测试文件保存对话框</button>
+        <div id="save-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>图像处理测试</h2>
+        <button class="test-button" onclick="testImageProcessing()">测试图像处理</button>
+        <div id="processing-result" class="result"></div>
+    </div>
+
+    <script>
+        // 检查是否在Tauri环境中
+        if (!window.__TAURI__) {
+            document.body.innerHTML = '<h1>⚠️ 请在Tauri应用程序中打开此页面</h1>';
+        }
+
+        async function testGreet() {
+            const resultDiv = document.getElementById('greet-result');
+            try {
+                resultDiv.textContent = '正在测试...';
+                const result = await window.__TAURI__.core.invoke('greet', {
+                    name: '图像处理系统'
+                });
+                resultDiv.textContent = `✅ 成功: ${result}`;
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        async function testFileValidation() {
+            const resultDiv = document.getElementById('validation-result');
+            try {
+                resultDiv.textContent = '正在测试文件验证...';
+                
+                const tests = [
+                    { file: 'test.jpg', expected: true },
+                    { file: 'test.jpeg', expected: true },
+                    { file: 'test.png', expected: true },
+                    { file: 'test.txt', expected: false },
+                    { file: 'test.pdf', expected: false }
+                ];
+
+                let results = [];
+                for (const test of tests) {
+                    const isValid = await window.__TAURI__.core.invoke('validate_image_file', {
+                        filePath: test.file
+                    });
+                    const status = isValid === test.expected ? '✅' : '❌';
+                    results.push(`${status} ${test.file}: ${isValid} (期望: ${test.expected})`);
+                }
+
+                resultDiv.textContent = results.join('\n');
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        async function testExifExtraction() {
+            const resultDiv = document.getElementById('exif-result');
+            const fileInput = document.getElementById('imageFile');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                resultDiv.textContent = '❌ 请先选择一个图片文件';
+                resultDiv.className = 'result error';
+                return;
+            }
+
+            try {
+                resultDiv.textContent = '正在提取EXIF数据...';
+                const file = fileInput.files[0];
+                
+                // 注意：这里需要文件的实际路径，而不是File对象
+                // 在实际应用中，需要先将文件保存到临时位置
+                resultDiv.textContent = '⚠️ EXIF提取需要文件路径，请在实际应用中测试';
+                resultDiv.className = 'result';
+                
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        async function testFileSaveDialog() {
+            const resultDiv = document.getElementById('save-result');
+            try {
+                resultDiv.textContent = '正在测试文件保存对话框...';
+                
+                // 创建测试用的元数据
+                const testMetadata = {
+                    camera: {
+                        make: "Canon",
+                        model: "EOS R5"
+                    },
+                    settings: {
+                        aperture: "f/2.8",
+                        shutter_speed: "1/125",
+                        iso: 400,
+                        focal_length: "50mm"
+                    },
+                    timestamp: "2024-01-15 14:30:00",
+                    location: null
+                };
+
+                // 创建测试用的叠加设置
+                const testOverlaySettings = {
+                    position: "BottomRight",
+                    font: {
+                        family: "Arial",
+                        size: 16,
+                        color: "#FFFFFF",
+                        weight: "Normal"
+                    },
+                    background: {
+                        color: "#000000",
+                        opacity: 0.8,
+                        padding: 10,
+                        border_radius: 5
+                    },
+                    display_items: {
+                        brand: true,
+                        model: true,
+                        aperture: true,
+                        shutter_speed: true,
+                        iso: true,
+                        timestamp: true,
+                        location: false,
+                        brand_logo: true
+                    }
+                };
+
+                // 创建测试用的相框设置
+                const testFrameSettings = {
+                    enabled: false,
+                    style: "Simple",
+                    color: "#FFFFFF",
+                    width: 10,
+                    opacity: 1.0,
+                    custom_properties: {}
+                };
+
+                // 注意：这里需要一个真实的图片文件路径
+                // 在实际测试中，你需要提供一个存在的图片文件路径
+                const testImagePath = "/path/to/test/image.jpg"; // 请替换为实际的图片路径
+                
+                resultDiv.textContent = '⚠️ 需要真实的图片文件路径才能测试文件保存对话框\n' +
+                                      '请在实际应用中选择图片后测试此功能\n\n' +
+                                      '测试参数已准备就绪:\n' +
+                                      `- 相机: ${testMetadata.camera.make} ${testMetadata.camera.model}\n` +
+                                      `- 设置: ${testMetadata.settings.aperture}, ${testMetadata.settings.shutter_speed}, ISO ${testMetadata.settings.iso}\n` +
+                                      `- 叠加位置: ${testOverlaySettings.position}\n` +
+                                      `- 相框: ${testFrameSettings.enabled ? '启用' : '禁用'}`;
+                
+                resultDiv.className = 'result';
+
+                // 如果你有真实的图片路径，可以取消注释下面的代码进行测试
+                /*
+                const savedPath = await window.__TAURI__.core.invoke('save_processed_image', {
+                    inputPath: testImagePath,
+                    metadata: testMetadata,
+                    overlaySettings: testOverlaySettings,
+                    frameSettings: testFrameSettings,
+                    quality: 95
+                });
+                
+                resultDiv.textContent = `✅ 文件保存对话框测试成功!\n保存路径: ${savedPath}`;
+                resultDiv.className = 'result success';
+                */
+                
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        async function testImageProcessing() {
+            const resultDiv = document.getElementById('processing-result');
+            try {
+                resultDiv.textContent = '图像处理测试需要实际的图片文件和完整的参数设置';
+                resultDiv.className = 'result';
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // 页面加载时自动运行基础测试
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testGreet();
+                testFileValidation();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

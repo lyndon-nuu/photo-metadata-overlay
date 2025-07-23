@@ -213,6 +213,106 @@ function App() {
     }
   };
 
+  // 使用文件保存对话框的智能保存函数
+  const handleDownload = async () => {
+    if (!selectedPhoto || !selectedFile) {
+      setError('请先选择一张图片');
+      return;
+    }
+
+    try {
+      setLoading('正在保存图片...');
+      
+      // 动态导入文件保存Hook和API服务
+      const { tauriAPI } = await import('./services/tauri-api.service');
+      
+      // 在浏览器环境中，我们需要先将文件保存到临时位置
+      // 这里我们使用一个特殊的方法来处理浏览器文件
+      
+      // 首先，我们需要将File对象转换为临时文件路径
+      // 在Tauri环境中，我们可以使用文件系统API来创建临时文件
+      const tempFilePath = await createTempFileFromBlob(selectedFile);
+      
+      // 将前端设置转换为后端格式
+      const backendOverlaySettings = tauriAPI.convertToBackendOverlaySettings(overlaySettings);
+      const backendFrameSettings = tauriAPI.convertToBackendFrameSettings(frameSettings);
+      
+      // 创建后端元数据格式
+      const backendMetadata = {
+        camera: {
+          make: selectedPhoto.exif?.make || 'Unknown',
+          model: selectedPhoto.exif?.model || 'Unknown',
+        },
+        settings: {
+          aperture: selectedPhoto.exif?.aperture,
+          shutter_speed: selectedPhoto.exif?.shutterSpeed,
+          iso: selectedPhoto.exif?.iso ? parseInt(selectedPhoto.exif.iso.replace('ISO ', '')) : undefined,
+          focal_length: selectedPhoto.exif?.focalLength,
+        },
+        timestamp: selectedPhoto.exif?.dateTimeOriginal || selectedPhoto.exif?.dateTime,
+        location: selectedPhoto.exif?.gps ? {
+          latitude: selectedPhoto.exif.gps.latitude,
+          longitude: selectedPhoto.exif.gps.longitude,
+          address: undefined,
+        } : undefined,
+      };
+      
+      // 确定图片质量
+      const quality = selectedFile.type.includes('png') ? 100 : 95;
+      
+      // 调用后端保存API（会弹出文件保存对话框）
+      const savedPath = await tauriAPI.saveProcessedImage(
+        tempFilePath,
+        backendMetadata,
+        backendOverlaySettings,
+        backendFrameSettings,
+        quality
+      );
+      
+      setSuccess(`图片已保存到: ${savedPath}`);
+      success('保存成功', `图片已保存到: ${savedPath}`);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('保存图片失败:', errorMessage);
+      
+      // 处理用户取消的情况
+      if (errorMessage.includes('用户取消')) {
+        setIdle(); // 重置状态，不显示错误
+        return;
+      }
+      
+      setError(`保存失败: ${errorMessage}`);
+    }
+  };
+
+  // 创建临时文件的辅助函数
+  const createTempFileFromBlob = async (file: File): Promise<string> => {
+    try {
+      // 使用Tauri的文件系统API创建临时文件
+      const { writeFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
+      
+      // 生成临时文件名
+      const tempFileName = `temp_${Date.now()}_${file.name}`;
+      
+      // 将File转换为ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      // 写入临时文件
+      await writeFile(tempFileName, uint8Array, { baseDir: BaseDirectory.Temp });
+      
+      // 返回临时文件的完整路径
+      const { join, tempDir } = await import('@tauri-apps/api/path');
+      const tempDirPath = await tempDir();
+      return await join(tempDirPath, tempFileName);
+      
+    } catch (error) {
+      console.error('创建临时文件失败:', error);
+      throw new Error('无法创建临时文件，请确保应用有文件系统访问权限');
+    }
+  };
+
   // 用户体验功能处理函数
   const handleUndo = () => {
     undoRedo.undo();
@@ -304,18 +404,7 @@ function App() {
             };
             input.click();
           }}
-          onSaveFile={() => {
-            if (processedBlob && selectedPhoto) {
-              const url = URL.createObjectURL(processedBlob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }
-          }}
+          onSaveFile={handleDownload}
           onBatchProcess={() => setShowBatchProcessor(true)}
           onShowPresets={() => setShowPresetSelector(true)}
           onShowSettings={() => setShowSettingsManager(true)}
@@ -346,18 +435,7 @@ function App() {
             };
             input.click();
           }}
-          onSaveFile={() => {
-            if (processedBlob && selectedPhoto) {
-              const url = URL.createObjectURL(processedBlob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }
-          }}
+          onSaveFile={handleDownload}
           onBatchProcess={() => setShowBatchProcessor(true)}
           onUndo={handleUndo}
           onRedo={handleRedo}
@@ -634,18 +712,7 @@ function App() {
                         className="w-full btn-primary"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          if (processedBlob && selectedPhoto) {
-                            const url = URL.createObjectURL(processedBlob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `${selectedPhoto.fileName.replace(/\.[^/.]+$/, '')}_processed.jpg`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                          }
-                        }}
+                        onClick={handleDownload}
                       >
                         下载处理后的图片
                       </motion.button>

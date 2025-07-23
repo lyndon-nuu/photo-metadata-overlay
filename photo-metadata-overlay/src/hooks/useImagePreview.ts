@@ -27,7 +27,7 @@ export function useImagePreview(
   options: UseImagePreviewOptions = {}
 ) {
   const {
-    debounceMs = 300,
+    debounceMs: _debounceMs = 300, // TODO: 实现防抖功能
     enableCache = true,
     maxCacheSize = 10,
   } = options;
@@ -143,11 +143,13 @@ export function useImagePreview(
         frameSettings
       );
 
-      // 4. 导出处理后的图像
+      // 4. 导出处理后的图像 - 保持原始格式或使用最佳质量
+      const originalFormat = file.type.includes('png') ? 'png' : 'jpeg';
+      const quality = originalFormat === 'png' ? 1.0 : 0.95; // PNG无损，JPEG高质量
       const blob = await imageProcessingService.exportImage(
         framedCanvas,
-        'jpeg',
-        0.9
+        originalFormat,
+        quality
       );
 
       const endTime = performance.now();

@@ -388,6 +388,127 @@ export interface BatchProcessorProps {
   onTaskRemove: (taskId: string) => void;
 }
 
+// Backend API types (matching Rust types)
+export interface BackendPhotoMetadata {
+  camera: {
+    make?: string;
+    model?: string;
+  };
+  settings: {
+    aperture?: string;
+    shutter_speed?: string;
+    iso?: number;
+    focal_length?: string;
+  };
+  timestamp?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
+}
+
+export interface BackendOverlaySettings {
+  position: 'TopLeft' | 'TopRight' | 'BottomLeft' | 'BottomRight';
+  font: {
+    family: string;
+    size: number;
+    color: string;
+    weight: 'Normal' | 'Bold';
+  };
+  background: {
+    color: string;
+    opacity: number;
+    padding: number;
+    border_radius: number;
+  };
+  display_items: {
+    brand: boolean;
+    model: boolean;
+    aperture: boolean;
+    shutter_speed: boolean;
+    iso: boolean;
+    timestamp: boolean;
+    location: boolean;
+    brand_logo: boolean;
+  };
+}
+
+export interface BackendFrameSettings {
+  enabled: boolean;
+  style: 'Simple' | 'Shadow' | 'Film' | 'Polaroid' | 'Vintage';
+  color: string;
+  width: number;
+  opacity: number;
+  custom_properties?: Record<string, any>;
+}
+
+export interface BackendProcessingSettings {
+  overlay_settings: BackendOverlaySettings;
+  frame_settings: BackendFrameSettings;
+  output_format: 'Jpeg' | 'Png';
+  quality: number;
+}
+
+export interface BackendProcessedImageInfo {
+  input_path: string;
+  output_path: string;
+  original_size: number;
+  processed_size: number;
+  processing_time_ms: number;
+}
+
+export interface BackendBatchProcessingResult {
+  total_files: number;
+  successful: BackendProcessedImageInfo[];
+  failed: BackendProcessingError[];
+  total_time_ms: number;
+}
+
+export interface BackendProcessingError {
+  file_path: string;
+  error_message: string;
+  error_type: 'FileNotFound' | 'InvalidFormat' | 'ExifReadError' | 'ImageProcessingError' | 'OutputError' | 'PermissionDenied';
+}
+
+export interface BackendPreviewSettings {
+  max_width: number;
+  max_height: number;
+  overlay_settings: BackendOverlaySettings;
+  frame_settings: BackendFrameSettings;
+}
+
+// Tauri API wrapper functions
+export interface TauriAPI {
+  greet(name: string): Promise<string>;
+  extractMetadata(filePath: string): Promise<BackendPhotoMetadata>;
+  validateImageFile(filePath: string): Promise<boolean>;
+  processImage(
+    inputPath: string,
+    metadata: BackendPhotoMetadata,
+    overlaySettings: BackendOverlaySettings,
+    frameSettings: BackendFrameSettings,
+    outputPath: string,
+    quality: number
+  ): Promise<BackendProcessedImageInfo>;
+  batchProcessImages(
+    imagePaths: string[],
+    settings: BackendProcessingSettings,
+    outputDir: string
+  ): Promise<BackendBatchProcessingResult>;
+  generatePreview(
+    imagePath: string,
+    settings: BackendPreviewSettings
+  ): Promise<number[]>; // Vec<u8> as number array
+  saveProcessedImage(
+    inputPath: string,
+    metadata: BackendPhotoMetadata,
+    overlaySettings: BackendOverlaySettings,
+    frameSettings: BackendFrameSettings,
+    quality: number
+  ): Promise<string>; // Returns saved file path
+}
+
 // Service interfaces
 export interface ExifService {
   extractMetadata(file: File): Promise<ExifData>;
