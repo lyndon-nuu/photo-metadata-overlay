@@ -10,18 +10,21 @@
 - **前端框架**: React + TypeScript
 - **桌面框架**: Tauri (Rust后端 + Web前端)
 - **UI组件库**: Ant Design (现代化设计语言)
-- **图像处理**: HTML5 Canvas API + Fabric.js
+- **图像处理**: Rust后端 - image-rs + imageproc + rusttype
+- **前端预览**: HTML5 Canvas API (仅用于预览)
 - **状态管理**: Zustand (轻量级状态管理)
 - **样式**: Tailwind CSS + CSS Modules
 - **动画**: Framer Motion (流畅的交互动画)
 - **图标**: Lucide React (现代化图标库)
 
 ### 架构模式
-采用分层架构模式：
-- **表现层 (Presentation Layer)**: React组件和UI逻辑
-- **业务逻辑层 (Business Logic Layer)**: 图像处理、EXIF解析、样式应用
-- **数据访问层 (Data Access Layer)**: 文件系统操作、设置存储
-- **平台层 (Platform Layer)**: Tauri提供的系统API
+采用前后端分离的分层架构模式：
+- **前端表现层 (Frontend Presentation Layer)**: React组件、UI逻辑、预览功能
+- **前端业务层 (Frontend Business Layer)**: 状态管理、用户交互、设置管理
+- **Tauri通信层 (Tauri Communication Layer)**: 前后端通信桥梁
+- **后端业务逻辑层 (Backend Business Logic Layer)**: 图像处理、EXIF解析、样式应用
+- **后端数据访问层 (Backend Data Access Layer)**: 文件系统操作、图像I/O
+- **平台层 (Platform Layer)**: 操作系统API和硬件资源
 
 ## Components and Interfaces
 
@@ -105,25 +108,47 @@ interface PhotoMetadata {
 }
 ```
 
-#### 图像处理服务
+#### 图像处理服务 (后端Rust)
+```rust
+// Rust后端服务接口
+pub struct ImageProcessingService;
+
+impl ImageProcessingService {
+    pub async fn process_image(
+        image_path: &str,
+        metadata: PhotoMetadata,
+        overlay_settings: OverlaySettings,
+        frame_settings: FrameSettings,
+        output_path: &str,
+        quality: u8
+    ) -> Result<ProcessedImageInfo, ProcessingError>;
+    
+    pub async fn batch_process_images(
+        image_paths: Vec<String>,
+        settings: ProcessingSettings
+    ) -> Result<BatchProcessingResult, ProcessingError>;
+    
+    pub async fn generate_preview(
+        image_path: &str,
+        settings: PreviewSettings
+    ) -> Result<Vec<u8>, ProcessingError>; // 返回缩略图字节数据
+}
+```
+
+#### 前端图像服务 (仅预览)
 ```typescript
-interface ImageProcessingService {
-  applyOverlay(
-    image: HTMLImageElement, 
-    metadata: PhotoMetadata, 
-    settings: OverlaySettings
-  ): Promise<HTMLCanvasElement>;
-  
-  applyFrame(
-    canvas: HTMLCanvasElement, 
+interface FrontendImageService {
+  generatePreview(
+    imageFile: File,
+    metadata: PhotoMetadata,
+    settings: OverlaySettings,
     frameSettings: FrameSettings
-  ): Promise<HTMLCanvasElement>;
+  ): Promise<HTMLCanvasElement>; // 仅用于实时预览
   
-  exportImage(
-    canvas: HTMLCanvasElement, 
-    format: 'jpeg' | 'png', 
-    quality?: number
-  ): Promise<Blob>;
+  requestBackendProcessing(
+    imagePath: string,
+    settings: ProcessingSettings
+  ): Promise<ProcessingResult>;
 }
 ```
 
@@ -379,13 +404,19 @@ const AnimationConfig = {
 ### 图像处理流程
 ```mermaid
 graph TD
-    A[选择图片文件] --> B[读取EXIF数据]
-    B --> C[加载图片到Canvas]
-    C --> D[应用相框效果]
-    D --> E[叠加元数据信息]
-    E --> F[添加品牌Logo]
-    F --> G[导出最终图片]
-    G --> H[保存到指定位置]
+    A[前端: 选择图片文件] --> B[后端: 读取EXIF数据]
+    B --> C[后端: 使用image-rs加载图片]
+    C --> D[后端: 应用相框效果]
+    D --> E[后端: 叠加元数据信息]
+    E --> F[后端: 添加品牌Logo]
+    F --> G[后端: 高质量导出图片]
+    G --> H[后端: 保存到指定位置]
+    H --> I[前端: 显示处理结果]
+    
+    subgraph "预览流程"
+        J[前端: 设置更改] --> K[后端: 生成低分辨率预览]
+        K --> L[前端: 实时显示预览]
+    end
 ```
 
 ### 用户体验优化

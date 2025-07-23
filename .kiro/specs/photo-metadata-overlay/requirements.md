@@ -82,3 +82,15 @@
 2. WHEN 叠加信息到照片上 THEN 系统 SHALL 使用高质量的文字渲染避免锯齿
 3. WHEN 保存处理后的照片 THEN 系统 SHALL 提供JPEG质量设置选项（80-100%）
 4. WHEN 用户选择保存格式 THEN 系统 SHALL 支持JPEG和PNG格式输出
+
+### Requirement 8
+
+**User Story:** 作为用户，我希望图像处理能够在后端进行，这样我就可以获得更好的性能和图片质量。
+
+#### Acceptance Criteria
+
+1. WHEN 用户选择图片进行处理 THEN 系统 SHALL 将图片文件传输到Rust后端进行处理
+2. WHEN 后端处理图片 THEN 系统 SHALL 使用高性能的图像处理库（如image-rs）保证质量
+3. WHEN 处理完成后 THEN 系统 SHALL 将处理后的图片返回给前端显示
+4. WHEN 批量处理时 THEN 系统 SHALL 在后端并行处理多张图片以提升效率
+5. WHEN 处理大文件时 THEN 系统 SHALL 在后端管理内存使用避免前端崩溃
