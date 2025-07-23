@@ -465,21 +465,45 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
   private prepareTextLines(displayData: Record<string, string>): string[] {
     const lines: string[] = [];
     
-    // 按优先级排序显示项目
-    const priorityOrder = ['brand', 'model', 'aperture', 'shutterSpeed', 'iso', 'timestamp', 'location'];
+    // 按照与后端完全相同的优先级顺序排列：brand, model, aperture, shutterSpeed, iso, timestamp, location
+    // 这个顺序必须与后端 Rust 代码中的 generate_overlay_text 函数保持一致
     
-    priorityOrder.forEach(key => {
-      if (displayData[key]) {
-        lines.push(displayData[key]);
-      }
-    });
-
-    // 添加其他未在优先级列表中的项目
-    Object.entries(displayData).forEach(([key, value]) => {
-      if (!priorityOrder.includes(key) && value) {
-        lines.push(value);
-      }
-    });
+    // 1. 相机品牌
+    if (displayData.brand) {
+      lines.push(displayData.brand);
+    }
+    
+    // 2. 相机型号
+    if (displayData.model) {
+      lines.push(displayData.model);
+    }
+    
+    // 3. 光圈
+    if (displayData.aperture) {
+      lines.push(displayData.aperture);
+    }
+    
+    // 4. 快门速度
+    if (displayData.shutterSpeed) {
+      lines.push(displayData.shutterSpeed);
+    }
+    
+    // 5. ISO
+    if (displayData.iso) {
+      lines.push(displayData.iso);
+    }
+    
+    // 6. 时间戳
+    if (displayData.timestamp) {
+      lines.push(displayData.timestamp);
+    }
+    
+    // 7. 位置信息（如果有的话）
+    if (displayData.location) {
+      lines.push(displayData.location);
+    }
+    
+    // 注意：焦距信息暂时不在优先级列表中，与后端保持一致
 
     return lines;
   }

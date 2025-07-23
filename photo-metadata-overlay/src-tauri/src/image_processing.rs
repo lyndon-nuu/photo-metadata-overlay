@@ -30,13 +30,13 @@ impl ImageProcessingService {
         let mut img = image::open(input_path)
             .with_context(|| format!("Failed to open image: {}", input_path))?;
 
-        // 应用相框效果
+        // 应用元数据叠加（先应用叠加，避免被相框遮挡）
+        img = Self::apply_overlay(img, &metadata, &overlay_settings)?;
+
+        // 应用相框效果（后应用相框，确保叠加内容不被遮挡）
         if frame_settings.enabled {
             img = Self::apply_frame(img, &frame_settings)?;
         }
-
-        // 应用元数据叠加
-        img = Self::apply_overlay(img, &metadata, &overlay_settings)?;
 
         // 保存处理后的图片
         Self::save_image(&img, output_path, &overlay_settings.display_items, quality)?;
@@ -138,15 +138,13 @@ impl ImageProcessingService {
         // 提取EXIF数据
         let metadata = crate::exif_service::ExifService::extract_metadata(image_path)?;
 
-        // 应用相框效果
-        let mut processed_img = if settings.frame_settings.enabled {
-            Self::apply_frame(preview_img, &settings.frame_settings)?
-        } else {
-            preview_img
-        };
+        // 应用叠加效果（先应用叠加，避免被相框遮挡）
+        let mut processed_img = Self::apply_overlay(preview_img, &metadata, &settings.overlay_settings)?;
 
-        // 应用叠加效果
-        processed_img = Self::apply_overlay(processed_img, &metadata, &settings.overlay_settings)?;
+        // 应用相框效果（后应用相框，确保叠加内容不被遮挡）
+        if settings.frame_settings.enabled {
+            processed_img = Self::apply_frame(processed_img, &settings.frame_settings)?;
+        }
 
         // 转换为字节数组
         let mut buffer = Vec::new();
@@ -314,67 +312,54 @@ impl ImageProcessingService {
     fn generate_overlay_text(metadata: &PhotoMetadata, display_items: &DisplayItems) -> String {
         let mut lines = Vec::new();
         
-        // 相机品牌和型号
-        if display_items.brand || display_items.model {
-            let mut camera_line = String::new();
-            if display_items.brand {
-                if let Some(make) = &metadata.camera.make {
-                    camera_line.push_str(make);
-                }
-            }
-            if display_items.model {
-                if let Some(model) = &metadata.camera.model {
-                    if !camera_line.is_empty() {
-                        camera_line.push(' ');
-                    }
-                    camera_line.push_str(model);
-                }
-            }
-            if !camera_line.is_empty() {
-                lines.push(camera_line);
+        // 按照与前端相同的优先级顺序排列：brand, model, aperture, shutterSpeed, iso, timestamp, location
+        
+        // 1. 相机品牌
+        if display_items.brand {
+            if let Some(make) = &metadata.camera.make {
+                lines.push(make.clone());
             }
         }
         
-        // 拍摄参数
-        let mut settings_line = String::new();
+        // 2. 相机型号
+        if display_items.model {
+            if let Some(model) = &metadata.camera.model {
+                lines.push(model.clone());
+            }
+        }
+        
+        // 3. 光圈
         if display_items.aperture {
             if let Some(aperture) = &metadata.settings.aperture {
-                settings_line.push_str(aperture);
+                lines.push(aperture.clone());
             }
         }
+        
+        // 4. 快门速度
         if display_items.shutter_speed {
             if let Some(shutter) = &metadata.settings.shutter_speed {
-                if !settings_line.is_empty() {
-                    settings_line.push_str(" • ");
-                }
-                settings_line.push_str(shutter);
+                lines.push(shutter.clone());
             }
         }
+        
+        // 5. ISO
         if display_items.iso {
             if let Some(iso) = metadata.settings.iso {
-                if !settings_line.is_empty() {
-                    settings_line.push_str(" • ");
-                }
-                settings_line.push_str(&format!("ISO {}", iso));
-            }
-        }
-        if !settings_line.is_empty() {
-            lines.push(settings_line);
-        }
-        
-        // 焦距
-        if display_items.aperture {
-            if let Some(focal_length) = &metadata.settings.focal_length {
-                lines.push(focal_length.clone());
+                lines.push(format!("ISO {}", iso));
             }
         }
         
-        // 时间戳
+        // 6. 时间戳
         if display_items.timestamp {
             if let Some(timestamp) = &metadata.timestamp {
                 lines.push(timestamp.clone());
             }
         }
+        
+        // 7. 位置信息（如果有的话）
+        // TODO: 添加位置信息支持
+        
+        // 注意：焦距信息暂时不在前端的优先级列表中，所以这里也不包含
         
         lines.join("\n")
     }
