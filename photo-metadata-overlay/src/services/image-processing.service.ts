@@ -428,6 +428,21 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
     displayData: Record<string, string>,
     settings: OverlaySettings
   ): Promise<void> {
+    // 检查是否使用自定义布局
+    if (settings.layoutMode === 'custom' && settings.customLayout) {
+      await this.renderCustomLayout(displayData, settings);
+    } else {
+      await this.renderPresetLayout(displayData, settings);
+    }
+  }
+
+  /**
+   * 渲染预设布局（原有的布局方式）
+   */
+  private async renderPresetLayout(
+    displayData: Record<string, string>,
+    settings: OverlaySettings
+  ): Promise<void> {
     const { font, background, position } = settings;
     
     // 准备文本内容
@@ -484,6 +499,117 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
       brandLogo,
       font
     );
+  }
+
+  /**
+   * 渲染自定义布局
+   */
+  private async renderCustomLayout(
+    displayData: Record<string, string>,
+    settings: OverlaySettings
+  ): Promise<void> {
+    if (!settings.customLayout) return;
+
+    const { font, background } = settings;
+    const { elements } = settings.customLayout;
+
+    // 遍历每个元素并渲染
+    for (const element of elements) {
+      if (!element.visible) continue;
+
+      // 获取元素的文本内容
+      const text = this.getElementText(element.type, displayData);
+      if (!text) continue;
+
+      // 计算元素的实际像素位置
+      const pixelX = (element.position.x / 100) * this.canvas.width;
+      const pixelY = (element.position.y / 100) * this.canvas.height;
+
+      // 设置元素样式
+      const elementFontSize = element.style?.fontSize || font.size;
+      const elementColor = element.style?.color || font.color;
+      const elementBgColor = element.style?.backgroundColor || background.color;
+      const elementPadding = element.style?.padding || background.padding;
+
+      this.ctx.font = `${font.weight} ${elementFontSize}px ${font.family}`;
+      this.ctx.textBaseline = 'top';
+
+      // 计算文本尺寸
+      const textMetrics = this.ctx.measureText(text);
+      const textWidth = textMetrics.width;
+      const textHeight = elementFontSize;
+
+      // 绘制背景（如果有）
+      if (elementBgColor && background.opacity > 0) {
+        this.ctx.save();
+        this.ctx.globalAlpha = background.opacity;
+        this.ctx.fillStyle = elementBgColor;
+        
+        if (background.borderRadius > 0) {
+          this.drawRoundedRect(
+            pixelX - elementPadding,
+            pixelY - elementPadding,
+            textWidth + elementPadding * 2,
+            textHeight + elementPadding * 2,
+            background.borderRadius
+          );
+          this.ctx.fill();
+        } else {
+          this.ctx.fillRect(
+            pixelX - elementPadding,
+            pixelY - elementPadding,
+            textWidth + elementPadding * 2,
+            textHeight + elementPadding * 2
+          );
+        }
+        this.ctx.restore();
+      }
+
+      // 绘制文本
+      this.ctx.fillStyle = elementColor;
+      this.ctx.fillText(text, pixelX, pixelY);
+
+      // 如果是品牌Logo元素，尝试绘制Logo
+      if (element.type === 'brandLogo' && displayData.brand) {
+        try {
+          const logoUrl = await brandLogoService.getBrandLogo(displayData.brand);
+          if (logoUrl) {
+            const brandLogo = await this.loadLogoImage(logoUrl);
+            const logoHeight = elementFontSize * 1.2;
+            const logoWidth = (brandLogo.naturalWidth / brandLogo.naturalHeight) * logoHeight;
+            this.ctx.drawImage(brandLogo, pixelX, pixelY, logoWidth, logoHeight);
+          }
+        } catch (error) {
+          console.warn('加载品牌Logo失败:', error);
+        }
+      }
+    }
+  }
+
+  /**
+   * 获取元素的文本内容
+   */
+  private getElementText(type: string, displayData: Record<string, string>): string {
+    switch (type) {
+      case 'brand':
+        return displayData.brand || '';
+      case 'model':
+        return displayData.model || '';
+      case 'aperture':
+        return displayData.aperture || '';
+      case 'shutterSpeed':
+        return displayData.shutterSpeed || '';
+      case 'iso':
+        return displayData.iso || '';
+      case 'timestamp':
+        return displayData.timestamp || '';
+      case 'location':
+        return displayData.location || '';
+      case 'brandLogo':
+        return ''; // Logo不显示文本
+      default:
+        return '';
+    }
   }
 
   /**

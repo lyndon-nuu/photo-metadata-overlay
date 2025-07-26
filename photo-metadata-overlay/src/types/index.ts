@@ -65,7 +65,9 @@ export interface ExifData {
 
 // Overlay settings types (aligned with design document)
 export interface OverlaySettings {
-  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  layoutMode: 'preset' | 'custom';
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'; // 预设模式使用
+  customLayout?: CustomLayoutSettings; // 自定义模式使用
   font: {
     family: string;
     size: number;
@@ -87,6 +89,30 @@ export interface OverlaySettings {
     timestamp: boolean;
     location: boolean;
     brandLogo: boolean;
+  };
+}
+
+// Custom layout settings for drag-and-drop positioning
+export interface CustomLayoutSettings {
+  elements: MetadataElement[];
+  gridEnabled: boolean;
+  gridSize: number;
+  snapToGrid: boolean;
+}
+
+export interface MetadataElement {
+  id: string;
+  type: 'brand' | 'model' | 'aperture' | 'shutterSpeed' | 'iso' | 'timestamp' | 'location' | 'brandLogo';
+  position: {
+    x: number; // 相对于图片的百分比位置 (0-100)
+    y: number; // 相对于图片的百分比位置 (0-100)
+  };
+  visible: boolean;
+  style?: {
+    fontSize?: number;
+    color?: string;
+    backgroundColor?: string;
+    padding?: number;
   };
 }
 

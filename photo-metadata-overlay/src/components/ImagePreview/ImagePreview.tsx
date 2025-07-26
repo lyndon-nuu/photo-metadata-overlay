@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Edit3 } from 'lucide-react';
 import { PhotoMetadata, OverlaySettings, FrameSettings } from '../../types';
 import { cn } from '../../utils/cn';
 import { Button } from '../UI/Button';
 import { useImagePreview } from '../../hooks/useImagePreview';
+import { CustomLayoutEditor } from '../CustomLayoutEditor';
 
 interface ImagePreviewProps {
   photo: PhotoMetadata | null;
@@ -12,6 +13,7 @@ interface ImagePreviewProps {
   frameSettings: FrameSettings;
   className?: string;
   onProcessingComplete?: (blob: Blob) => void;
+  onOverlaySettingsChange?: (settings: OverlaySettings) => void;
 }
 
 interface ViewportState {
@@ -39,9 +41,13 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
   frameSettings,
   className,
   onProcessingComplete,
+  onOverlaySettingsChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // 编辑模式状态
+  const [isEditMode, setIsEditMode] = useState(false);
   
   // 使用优化的预览Hook
   const { 
@@ -49,7 +55,8 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     error, 
     processedBlob, 
     canvas: processedCanvas,
-    cacheSize 
+    cacheSize,
+    forceRefresh
   } = useImagePreview(photo, file, overlaySettings, frameSettings, {
     debounceMs: 300,
     enableCache: true,
@@ -274,6 +281,29 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* 自定义布局编辑按钮 - 仅在自定义布局模式下显示 */}
+          {overlaySettings.layoutMode === 'custom' && (
+            <Button
+              variant={isEditMode ? "primary" : "outline"}
+              size="sm"
+              onClick={() => {
+                const newEditMode = !isEditMode;
+                setIsEditMode(newEditMode);
+                
+                // 如果退出编辑模式，强制刷新预览
+                if (!newEditMode) {
+                  console.log('退出编辑模式，强制刷新预览');
+                  setTimeout(() => {
+                    forceRefresh();
+                  }, 100); // 稍微延迟，确保状态更新完成
+                }
+              }}
+              icon={<Edit3 className="w-4 h-4" />}
+            >
+              {isEditMode ? '完成编辑' : '编辑布局'}
+            </Button>
+          )}
+          
           <Button
             variant="outline"
             size="sm"
@@ -329,34 +359,103 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
       <div 
         ref={containerRef}
         className="flex-1 overflow-hidden relative bg-gray-50 dark:bg-gray-900"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-        style={{ cursor: viewport.isDragging ? 'grabbing' : 'grab' }}
+        onMouseDown={!isEditMode ? handleMouseDown : undefined}
+        onMouseMove={!isEditMode ? handleMouseMove : undefined}
+        onMouseUp={!isEditMode ? handleMouseUp : undefined}
+        onMouseLeave={!isEditMode ? handleMouseUp : undefined}
+        onWheel={!isEditMode ? handleWheel : undefined}
+        style={{ cursor: isEditMode ? 'default' : (viewport.isDragging ? 'grabbing' : 'grab') }}
       >
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            transform: `translate(${viewport.offsetX}px, ${viewport.offsetY}px) scale(${viewport.zoom})`,
-            transformOrigin: 'center',
-            transition: viewport.isDragging ? 'none' : 'transform 0.2s ease-out',
-          }}
-        >
-          <canvas
-            ref={canvasRef}
-            className="max-w-none shadow-lg"
-            style={{
-              imageRendering: viewport.zoom > 1 ? 'pixelated' : 'auto',
-            }}
-          />
-        </div>
+        {/* 自定义布局编辑器 - 在编辑模式下显示，不显示背景Canvas */}
+        {isEditMode && overlaySettings.layoutMode === 'custom' && file && photo && onOverlaySettingsChange && (
+          <div className="absolute inset-0 z-10 bg-gray-50">
+            <CustomLayoutEditor
+              imageFile={file}
+              metadata={photo}
+              customLayout={overlaySettings.customLayout!}
+              overlaySettings={overlaySettings}
+              onLayoutChange={(layout) => {
+                onOverlaySettingsChange({
+                  ...overlaySettings,
+                  customLayout: layout,
+                });
+              }}
+              onElementMove={(elementId, position) => {
+                if (!overlaySettings.customLayout) return;
+                
+                const updatedElements = overlaySettings.customLayout.elements.map(el =>
+                  el.id === elementId ? { ...el, position } : el
+                );
+                
+                onOverlaySettingsChange({
+                  ...overlaySettings,
+                  customLayout: {
+                    ...overlaySettings.customLayout,
+                    elements: updatedElements,
+                  },
+                });
+              }}
+              onElementStyleChange={(elementId, style) => {
+                if (!overlaySettings.customLayout) return;
+                
+                const updatedElements = overlaySettings.customLayout.elements.map(el =>
+                  el.id === elementId ? { 
+                    ...el, 
+                    style: { ...el.style, ...style }
+                  } : el
+                );
+                
+                onOverlaySettingsChange({
+                  ...overlaySettings,
+                  customLayout: {
+                    ...overlaySettings.customLayout,
+                    elements: updatedElements,
+                  },
+                });
+              }}
+            />
+          </div>
+        )}
 
-        {/* 缩放提示 */}
-        <div className="absolute bottom-4 left-4 bg-black/50 text-white px-2 py-1 rounded text-xs">
-          使用滚轮缩放 | 拖拽平移 | 快捷键: +/- 缩放, 0 重置, F 适应
-        </div>
+        {/* 普通预览模式 */}
+        {!isEditMode && (
+          <>
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                transform: `translate(${viewport.offsetX}px, ${viewport.offsetY}px) scale(${viewport.zoom})`,
+                transformOrigin: 'center',
+                transition: viewport.isDragging ? 'none' : 'transform 0.2s ease-out',
+              }}
+            >
+              <canvas
+                ref={canvasRef}
+                className="max-w-none shadow-lg"
+                style={{
+                  imageRendering: viewport.zoom > 1 ? 'pixelated' : 'auto',
+                }}
+              />
+            </div>
+
+            {/* 缩放提示 */}
+            <div className="absolute bottom-4 left-4 bg-black/50 text-white px-2 py-1 rounded text-xs">
+              使用滚轮缩放 | 拖拽平移 | 快捷键: +/- 缩放, 0 重置, F 适应
+            </div>
+          </>
+        )}
+
+        {/* 编辑模式提示 */}
+        {isEditMode && (
+          <div className="absolute top-4 left-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg">
+            <div className="flex items-center space-x-2">
+              <Edit3 className="w-4 h-4" />
+              <span className="text-sm font-medium">编辑模式</span>
+            </div>
+            <p className="text-xs mt-1 opacity-90">
+              拖拽元数据项调整位置，点击选择编辑样式
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 状态栏 */}

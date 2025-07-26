@@ -256,7 +256,7 @@ export function useImagePreview(
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [photo, file, overlaySettings, frameSettings]); // 直接依赖设置对象，确保变化被检测到
+  }, [photo, file, settingsHash]); // 使用settingsHash确保所有设置变化都被检测到
 
   // 清理定时器
   useEffect(() => {

@@ -79,6 +79,28 @@ interface BatchProcessorProps {
 }
 ```
 
+#### 6. 自定义布局编辑器 (CustomLayoutEditor)
+```typescript
+interface CustomLayoutEditorProps {
+  imageFile: File;
+  metadata: PhotoMetadata;
+  customLayout: CustomLayoutSettings;
+  onLayoutChange: (layout: CustomLayoutSettings) => void;
+  onElementMove: (elementId: string, position: { x: number; y: number }) => void;
+  onElementStyleChange: (elementId: string, style: Partial<MetadataElement['style']>) => void;
+}
+
+interface DraggableMetadataItemProps {
+  element: MetadataElement;
+  metadata: PhotoMetadata;
+  imageSize: { width: number; height: number };
+  onDragEnd: (position: { x: number; y: number }) => void;
+  onStyleChange: (style: Partial<MetadataElement['style']>) => void;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+```
+
 ### 服务接口
 
 #### EXIF数据服务
@@ -135,20 +157,26 @@ impl ImageProcessingService {
 }
 ```
 
-#### 前端图像服务 (仅预览)
+#### 前端图像服务 (完整处理)
 ```typescript
 interface FrontendImageService {
-  generatePreview(
-    imageFile: File,
+  loadImage(file: File): Promise<HTMLImageElement>;
+  applyOverlay(
+    image: HTMLImageElement,
     metadata: PhotoMetadata,
-    settings: OverlaySettings,
-    frameSettings: FrameSettings
-  ): Promise<HTMLCanvasElement>; // 仅用于实时预览
+    settings: OverlaySettings
+  ): Promise<HTMLCanvasElement>; // 支持预设和自定义布局
   
-  requestBackendProcessing(
-    imagePath: string,
-    settings: ProcessingSettings
-  ): Promise<ProcessingResult>;
+  applyFrame(
+    canvas: HTMLCanvasElement,
+    frameSettings: FrameSettings
+  ): Promise<HTMLCanvasElement>;
+  
+  exportImage(
+    canvas: HTMLCanvasElement,
+    format: 'jpeg' | 'png',
+    quality?: number
+  ): Promise<Blob>; // 高质量导出
 }
 ```
 
@@ -165,7 +193,9 @@ interface BrandLogoService {
 ### 叠加设置模型
 ```typescript
 interface OverlaySettings {
-  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  layoutMode: 'preset' | 'custom';
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'; // 预设模式使用
+  customLayout?: CustomLayoutSettings; // 自定义模式使用
   font: {
     family: string;
     size: number;
@@ -187,6 +217,29 @@ interface OverlaySettings {
     timestamp: boolean;
     location: boolean;
     brandLogo: boolean;
+  };
+}
+
+interface CustomLayoutSettings {
+  elements: MetadataElement[];
+  gridEnabled: boolean;
+  gridSize: number;
+  snapToGrid: boolean;
+}
+
+interface MetadataElement {
+  id: string;
+  type: 'brand' | 'model' | 'aperture' | 'shutterSpeed' | 'iso' | 'timestamp' | 'location' | 'brandLogo';
+  position: {
+    x: number; // 相对于图片的百分比位置 (0-100)
+    y: number; // 相对于图片的百分比位置 (0-100)
+  };
+  visible: boolean;
+  style?: {
+    fontSize?: number;
+    color?: string;
+    backgroundColor?: string;
+    padding?: number;
   };
 }
 ```

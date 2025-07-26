@@ -31,6 +31,7 @@ export function SmartPresetSelector({
         description: '简洁的白色背景，适合专业摄影',
         category: 'professional',
         overlaySettings: {
+          layoutMode: 'preset',
           position: 'bottom-right',
           font: {
             family: 'Inter',
@@ -74,6 +75,7 @@ export function SmartPresetSelector({
         description: '温暖的胶片风格，带有复古相框',
         category: 'artistic',
         overlaySettings: {
+          layoutMode: 'preset',
           position: 'bottom-left',
           font: {
             family: 'serif',

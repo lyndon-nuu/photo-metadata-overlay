@@ -36,7 +36,14 @@ export const mockPhotoMetadata: PhotoMetadata = {
 };
 
 export const mockOverlaySettings: OverlaySettings = {
+  layoutMode: 'preset',
   position: 'bottom-right',
+  customLayout: {
+    elements: [],
+    gridEnabled: true,
+    gridSize: 20,
+    snapToGrid: true,
+  },
   font: {
     family: 'Arial',
     size: 16,

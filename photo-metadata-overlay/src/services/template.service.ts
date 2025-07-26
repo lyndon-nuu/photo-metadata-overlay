@@ -311,6 +311,7 @@ export class TemplateServiceImpl {
         description: '简洁的元数据显示，适合专业摄影作品',
         category: 'photography',
         overlaySettings: {
+          layoutMode: 'preset',
           position: 'bottom-right',
           font: {
             family: 'Arial',
@@ -350,6 +351,7 @@ export class TemplateServiceImpl {
         description: '适合社交媒体分享的时尚设计',
         category: 'social',
         overlaySettings: {
+          layoutMode: 'preset',
           position: 'bottom-left',
           font: {
             family: 'Arial',
@@ -393,6 +395,7 @@ export class TemplateServiceImpl {
         description: '专业摄影师作品集展示模板',
         category: 'professional',
         overlaySettings: {
+          layoutMode: 'preset',
           position: 'bottom-right',
           font: {
             family: 'Arial',
@@ -432,6 +435,7 @@ export class TemplateServiceImpl {
         description: '艺术摄影的创意展示模板',
         category: 'artistic',
         overlaySettings: {
+          layoutMode: 'preset',
           position: 'top-left',
           font: {
             family: 'Arial',
@@ -471,6 +475,7 @@ export class TemplateServiceImpl {
         description: '模拟胶片摄影的怀旧效果',
         category: 'artistic',
         overlaySettings: {
+          layoutMode: 'preset',
           position: 'bottom-left',
           font: {
             family: 'Arial',

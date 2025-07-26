@@ -25,7 +25,9 @@ export const createDefaultOverlaySettings = (): OverlaySettings => ({
 
 export const validateOverlaySettings = (settings: Partial<OverlaySettings>): OverlaySettings => {
   return {
+    layoutMode: settings.layoutMode || DEFAULT_OVERLAY_SETTINGS.layoutMode,
     position: settings.position || DEFAULT_OVERLAY_SETTINGS.position,
+    customLayout: settings.customLayout || DEFAULT_OVERLAY_SETTINGS.customLayout,
     font: {
       family: settings.font?.family || DEFAULT_OVERLAY_SETTINGS.font.family,
       size: Math.max(8, Math.min(72, settings.font?.size || DEFAULT_OVERLAY_SETTINGS.font.size)),
@@ -294,6 +296,14 @@ export const cloneOverlaySettings = (settings: OverlaySettings): OverlaySettings
   font: { ...settings.font },
   background: { ...settings.background },
   displayItems: { ...settings.displayItems },
+  customLayout: settings.customLayout ? {
+    ...settings.customLayout,
+    elements: settings.customLayout.elements.map(element => ({
+      ...element,
+      position: { ...element.position },
+      style: element.style ? { ...element.style } : undefined,
+    })),
+  } : undefined,
 });
 
 export const cloneFrameSettings = (settings: FrameSettings): FrameSettings => ({

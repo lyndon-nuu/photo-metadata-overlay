@@ -618,6 +618,7 @@ function App() {
                   overlaySettings={overlaySettings}
                   frameSettings={frameSettings}
                   onProcessingComplete={handleProcessingComplete}
+                  onOverlaySettingsChange={handleOverlaySettingsChange}
                   className="h-full"
                 />
               </motion.div>

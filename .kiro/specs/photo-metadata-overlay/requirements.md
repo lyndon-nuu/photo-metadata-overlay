@@ -28,6 +28,19 @@
 3. WHEN 用户预览效果 THEN 系统 SHALL 实时显示叠加效果的预览
 4. WHEN 用户保存设置 THEN 系统 SHALL 将设置应用到后续的所有处理操作
 
+### Requirement 9
+
+**User Story:** 作为用户，我希望能够通过拖拽的方式自定义每个元数据项的位置，这样我就可以根据照片内容灵活调整信息的摆放位置。
+
+#### Acceptance Criteria
+
+1. WHEN 用户进入自定义布局模式 THEN 系统 SHALL 将每个元数据项（ISO、光圈、快门等）显示为可拖拽的独立元素
+2. WHEN 用户拖拽某个元数据项 THEN 系统 SHALL 实时显示该项在图片上的新位置
+3. WHEN 用户释放拖拽 THEN 系统 SHALL 保存该元数据项的新位置坐标
+4. WHEN 用户启用网格对齐功能 THEN 系统 SHALL 提供网格线辅助对齐，元素自动吸附到网格点
+5. WHEN 用户重置布局 THEN 系统 SHALL 提供一键恢复到默认布局的功能
+6. WHEN 用户保存自定义布局 THEN 系统 SHALL 支持将布局保存为预设模板供后续使用
+
 ### Requirement 3
 
 **User Story:** 作为需要处理大量照片的用户，我希望能够批量处理多张照片，这样我就可以节省大量的手动操作时间。

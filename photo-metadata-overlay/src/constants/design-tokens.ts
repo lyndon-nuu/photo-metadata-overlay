@@ -1,4 +1,5 @@
 import { DesignTokens } from '../types/design-system';
+import { OverlaySettings } from '../types';
 
 // Design tokens constants
 export const DESIGN_TOKENS: DesignTokens = {
@@ -91,13 +92,20 @@ export const DESIGN_TOKENS: DesignTokens = {
 };
 
 // Default overlay settings (aligned with new OverlaySettings interface)
-export const DEFAULT_OVERLAY_SETTINGS = {
-  position: 'bottom-left' as const,
+export const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
+  layoutMode: 'preset',
+  position: 'bottom-left',
+  customLayout: {
+    elements: [],
+    gridEnabled: true,
+    gridSize: 20,
+    snapToGrid: true,
+  },
   font: {
     family: 'Inter',
     size: 14,
     color: '#ffffff',
-    weight: 'normal' as const,
+    weight: 'normal',
   },
   background: {
     color: 'rgba(0, 0, 0, 0.7)',
@@ -115,7 +123,7 @@ export const DEFAULT_OVERLAY_SETTINGS = {
     location: false,
     brandLogo: true,
   },
-} as const;
+};
 
 // Predefined overlay templates (legacy support)
 export const DEFAULT_OVERLAY_TEMPLATES = [

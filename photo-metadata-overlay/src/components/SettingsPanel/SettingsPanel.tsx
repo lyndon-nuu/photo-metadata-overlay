@@ -175,6 +175,26 @@ const OverlaySettingsTab: React.FC<OverlaySettingsTabProps> = ({
     });
   };
 
+  const handleLayoutModeChange = (layoutMode: OverlaySettings['layoutMode']) => {
+    const updatedSettings = {
+      ...settings,
+      layoutMode,
+    };
+
+    // 如果切换到自定义布局模式且没有元素，创建默认元素
+    if (layoutMode === 'custom' && (!settings.customLayout || settings.customLayout.elements.length === 0)) {
+      const defaultElements = createDefaultCustomElements(settings);
+      updatedSettings.customLayout = {
+        elements: defaultElements,
+        gridEnabled: true,
+        gridSize: 20,
+        snapToGrid: true,
+      };
+    }
+
+    onChange(updatedSettings);
+  };
+
   const handlePositionChange = (position: OverlaySettings['position']) => {
     onChange({
       ...settings,
@@ -204,6 +224,43 @@ const OverlaySettingsTab: React.FC<OverlaySettingsTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* 布局模式选择 */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+          布局模式
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleLayoutModeChange('preset')}
+            className={cn(
+              "px-3 py-2 text-sm rounded-md border transition-colors",
+              settings.layoutMode === 'preset'
+                ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+            )}
+          >
+            预设布局
+          </button>
+          <button
+            onClick={() => handleLayoutModeChange('custom')}
+            className={cn(
+              "px-3 py-2 text-sm rounded-md border transition-colors",
+              settings.layoutMode === 'custom'
+                ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+            )}
+          >
+            自定义拖拽
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          {settings.layoutMode === 'preset' 
+            ? '使用预设的四个角落位置' 
+            : '可以自由拖拽每个元数据项到任意位置'
+          }
+        </p>
+      </div>
+
       {/* 显示项目 */}
       <div>
         <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
@@ -226,33 +283,110 @@ const OverlaySettingsTab: React.FC<OverlaySettingsTabProps> = ({
         </div>
       </div>
 
-      {/* 位置设置 */}
-      <div>
-        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-          位置
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { value: 'top-left', label: '左上角' },
-            { value: 'top-right', label: '右上角' },
-            { value: 'bottom-left', label: '左下角' },
-            { value: 'bottom-right', label: '右下角' },
-          ].map((option) => (
-            <button
-              key={option.value}
-              onClick={() => handlePositionChange(option.value as OverlaySettings['position'])}
-              className={cn(
-                "px-3 py-2 text-sm rounded-md border transition-colors",
-                settings.position === option.value
-                  ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
+      {/* 位置设置 - 仅在预设布局模式下显示 */}
+      {settings.layoutMode === 'preset' && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+            位置
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: 'top-left', label: '左上角' },
+              { value: 'top-right', label: '右上角' },
+              { value: 'bottom-left', label: '左下角' },
+              { value: 'bottom-right', label: '右下角' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handlePositionChange(option.value as OverlaySettings['position'])}
+                className={cn(
+                  "px-3 py-2 text-sm rounded-md border transition-colors",
+                  settings.position === option.value
+                    ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 自定义布局设置 - 仅在自定义布局模式下显示 */}
+      {settings.layoutMode === 'custom' && settings.customLayout && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+            自定义布局设置
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">显示网格</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.customLayout.gridEnabled}
+                  onChange={(e) => onChange({
+                    ...settings,
+                    customLayout: {
+                      ...settings.customLayout!,
+                      gridEnabled: e.target.checked,
+                    },
+                  })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">网格吸附</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.customLayout.snapToGrid}
+                  onChange={(e) => onChange({
+                    ...settings,
+                    customLayout: {
+                      ...settings.customLayout!,
+                      snapToGrid: e.target.checked,
+                    },
+                  })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            
+            <div>
+              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                网格大小: {settings.customLayout.gridSize}px
+              </label>
+              <input
+                type="range"
+                min="10"
+                max="50"
+                step="5"
+                value={settings.customLayout.gridSize}
+                onChange={(e) => onChange({
+                  ...settings,
+                  customLayout: {
+                    ...settings.customLayout!,
+                    gridSize: parseInt(e.target.value),
+                  },
+                })}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                💡 提示：切换到预览模式可以拖拽调整每个元数据项的位置
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 字体设置 */}
       <div>
@@ -591,6 +725,127 @@ function getDisplayItemLabel(key: string): string {
   };
   
   return labels[key] || key;
+}
+
+// 辅助函数：创建默认的自定义布局元素
+function createDefaultCustomElements(settings: OverlaySettings) {
+  const elements = [];
+  const spacing = 25; // 默认间距
+  let yOffset = 10;
+
+  // 根据显示设置创建元素
+  if (settings.displayItems.brand) {
+    elements.push({
+      id: 'brand',
+      type: 'brand' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+    yOffset += spacing;
+  }
+
+  if (settings.displayItems.model) {
+    elements.push({
+      id: 'model',
+      type: 'model' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+    yOffset += spacing;
+  }
+
+  if (settings.displayItems.aperture) {
+    elements.push({
+      id: 'aperture',
+      type: 'aperture' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+    yOffset += spacing;
+  }
+
+  if (settings.displayItems.shutterSpeed) {
+    elements.push({
+      id: 'shutterSpeed',
+      type: 'shutterSpeed' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+    yOffset += spacing;
+  }
+
+  if (settings.displayItems.iso) {
+    elements.push({
+      id: 'iso',
+      type: 'iso' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+    yOffset += spacing;
+  }
+
+  if (settings.displayItems.timestamp) {
+    elements.push({
+      id: 'timestamp',
+      type: 'timestamp' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+    yOffset += spacing;
+  }
+
+  if (settings.displayItems.location) {
+    elements.push({
+      id: 'location',
+      type: 'location' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+    yOffset += spacing;
+  }
+
+  if (settings.displayItems.brandLogo) {
+    elements.push({
+      id: 'brandLogo',
+      type: 'brandLogo' as const,
+      position: { x: 10, y: yOffset },
+      visible: true,
+      style: {
+        fontSize: settings.font.size,
+        color: settings.font.color,
+      }
+    });
+  }
+
+  return elements;
 }
 
 export default SettingsPanel;

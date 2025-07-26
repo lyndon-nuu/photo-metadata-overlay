@@ -413,7 +413,9 @@ export class StorageServiceImpl implements StorageService {
    */
   private validateOverlaySettings(settings: Partial<OverlaySettings>): OverlaySettings {
     return {
+      layoutMode: settings.layoutMode || DEFAULT_OVERLAY_SETTINGS.layoutMode,
       position: settings.position || DEFAULT_OVERLAY_SETTINGS.position,
+      customLayout: settings.customLayout || DEFAULT_OVERLAY_SETTINGS.customLayout,
       font: {
         family: settings.font?.family || DEFAULT_OVERLAY_SETTINGS.font.family,
         size: Math.max(8, Math.min(72, settings.font?.size || DEFAULT_OVERLAY_SETTINGS.font.size)),
