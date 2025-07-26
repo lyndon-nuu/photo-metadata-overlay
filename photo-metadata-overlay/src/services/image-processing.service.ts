@@ -1,7 +1,8 @@
-import { ImageProcessingService, PhotoMetadata, OverlaySettings, FrameSettings } from '../types';
+import { ImageProcessingService, PhotoMetadata, OverlaySettings, FrameSettings, ImageProcessingSettings } from '../types';
 import { extractDisplayableMetadata } from '../utils/data-models.utils';
 import { brandLogoService } from './brand-logo.service';
 import { performanceOptimizer, withPerformanceTracking } from './performance-optimizer.service';
+import { DEFAULT_IMAGE_PROCESSING_SETTINGS } from '../constants/design-tokens';
 
 /**
  * 图像处理服务实现
@@ -12,9 +13,32 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private imageCache: Map<string, HTMLImageElement> = new Map();
-  private maxCacheSize: number = 10; // 最大缓存图片数量
-  private maxImageDimension: number = 4096; // 最大图像尺寸（像素）
   private processingQueue: Set<string> = new Set(); // 正在处理的文件队列
+  
+  // 动态配置设置
+  private settings: ImageProcessingSettings = DEFAULT_IMAGE_PROCESSING_SETTINGS;
+
+  /**
+   * 更新图像处理设置
+   * @param newSettings 新的设置
+   */
+  updateSettings(newSettings: Partial<ImageProcessingSettings>): void {
+    this.settings = { ...this.settings, ...newSettings };
+    console.log('图像处理设置已更新:', this.settings);
+    
+    // 如果缓存设置发生变化，清理缓存
+    if (newSettings.maxCacheSize !== undefined || newSettings.enableCache !== undefined) {
+      this.clearImageCache();
+    }
+  }
+
+  /**
+   * 获取当前设置
+   * @returns 当前图像处理设置
+   */
+  getSettings(): ImageProcessingSettings {
+    return { ...this.settings };
+  }
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -85,7 +109,12 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
    * @returns 是否需要调整尺寸
    */
   private shouldResizeImage(image: HTMLImageElement): boolean {
-    const maxDimension = this.maxImageDimension;
+    // 如果设置为保持原始分辨率，则不调整
+    if (this.settings.preserveOriginalResolution) {
+      return false;
+    }
+    
+    const maxDimension = this.settings.maxDimension;
     return image.naturalWidth > maxDimension || image.naturalHeight > maxDimension;
   }
 
@@ -95,7 +124,7 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
    * @returns 调整后的图像
    */
   private async resizeImageForPerformance(image: HTMLImageElement): Promise<HTMLImageElement> {
-    const maxDimension = this.maxImageDimension;
+    const maxDimension = this.settings.maxDimension;
     const { naturalWidth, naturalHeight } = image;
     
     // 计算新尺寸，保持宽高比
@@ -256,7 +285,7 @@ export class ImageProcessingServiceImpl implements ImageProcessingService {
       }
 
       // 管理缓存大小
-      if (this.imageCache.size >= this.maxCacheSize) {
+      if (this.imageCache.size >= this.settings.maxCacheSize) {
         // 删除最旧的缓存项
         const firstKey = this.imageCache.keys().next().value;
         if (firstKey) {

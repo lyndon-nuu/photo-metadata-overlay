@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { Settings, Image, Frame } from 'lucide-react';
-import { OverlaySettings, FrameSettings } from '../../types';
-import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from '../../constants/design-tokens';
+import { Settings, Image, Frame, Cpu } from 'lucide-react';
+import { OverlaySettings, FrameSettings, ImageProcessingSettings } from '../../types';
+import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS, DEFAULT_IMAGE_PROCESSING_SETTINGS } from '../../constants/design-tokens';
+import { ImageProcessingSettingsPanel } from '../ImageProcessingSettings';
 import { cn } from '../../utils/cn';
 
 interface SettingsPanelProps {
   overlaySettings: OverlaySettings;
   frameSettings: FrameSettings;
+  imageProcessingSettings: ImageProcessingSettings;
   onOverlayChange: (settings: OverlaySettings) => void;
   onFrameChange: (settings: FrameSettings) => void;
+  onImageProcessingChange: (settings: ImageProcessingSettings) => void;
   disabled?: boolean;
   className?: string;
 }
 
-type TabType = 'overlay' | 'frame';
+type TabType = 'overlay' | 'frame' | 'processing';
 
 /**
  * 设置面板组件
@@ -22,8 +25,10 @@ type TabType = 'overlay' | 'frame';
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   overlaySettings,
   frameSettings,
+  imageProcessingSettings,
   onOverlayChange,
   onFrameChange,
+  onImageProcessingChange,
   disabled: _disabled = false,
   className,
 }) => {
@@ -39,6 +44,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       id: 'frame' as TabType,
       label: '相框效果',
       icon: Frame,
+    },
+    {
+      id: 'processing' as TabType,
+      label: '图像处理',
+      icon: Cpu,
     },
   ];
 
@@ -93,6 +103,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <FrameSettingsTab
             settings={frameSettings}
             onChange={onFrameChange}
+          />
+        )}
+        
+        {activeTab === 'processing' && (
+          <ImageProcessingSettingsPanel
+            settings={imageProcessingSettings}
+            onSettingsChange={onImageProcessingChange}
+            onReset={() => onImageProcessingChange(DEFAULT_IMAGE_PROCESSING_SETTINGS)}
           />
         )}
       </div>

@@ -80,9 +80,9 @@ export function useFileSave(options: UseFileSaveOptions = {}): UseFileSaveReturn
       );
       console.log('🖼️ 相框效果完成');
 
-      // 4. 导出高质量图像（无损或高质量）
+      // 4. 导出高质量图像（无损质量）
       const originalFormat = file.type.includes('png') ? 'png' : 'jpeg';
-      const exportQuality = originalFormat === 'png' ? 1.0 : (quality / 100); // 转换质量格式
+      const exportQuality = 1.0; // PNG和JPEG都使用100%无损质量
       const blob = await imageProcessingService.exportImage(
         finalCanvas,
         originalFormat,

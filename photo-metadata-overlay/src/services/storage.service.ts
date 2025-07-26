@@ -1,5 +1,5 @@
-import { StorageService, UserSettings, OverlaySettings, FrameSettings, OverlayConfig } from '../types';
-import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from '../constants/design-tokens';
+import { StorageService, UserSettings, OverlaySettings, FrameSettings, OverlayConfig, ImageProcessingSettings } from '../types';
+import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS, DEFAULT_IMAGE_PROCESSING_SETTINGS } from '../constants/design-tokens';
 
 /**
  * 存储服务实现
@@ -153,6 +153,47 @@ export class StorageServiceImpl implements StorageService {
     } catch (error) {
       console.error('加载相框设置失败:', error);
       return DEFAULT_FRAME_SETTINGS;
+    }
+  }
+
+  /**
+   * 保存图像处理设置
+   */
+  async saveImageProcessingSettings(settings: ImageProcessingSettings): Promise<void> {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('image_processing_settings', JSON.stringify(settings));
+        console.log('图像处理设置已保存到 localStorage');
+        return;
+      }
+
+      // TODO: Tauri 实现
+      console.log('图像处理设置已保存');
+    } catch (error) {
+      console.error('保存图像处理设置失败:', error);
+      throw new Error('无法保存图像处理设置');
+    }
+  }
+
+  /**
+   * 加载图像处理设置
+   */
+  async loadImageProcessingSettings(): Promise<ImageProcessingSettings> {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('image_processing_settings');
+        if (stored) {
+          const settings = JSON.parse(stored) as ImageProcessingSettings;
+          console.log('从 localStorage 加载图像处理设置');
+          return { ...DEFAULT_IMAGE_PROCESSING_SETTINGS, ...settings };
+        }
+      }
+
+      // TODO: Tauri 实现
+      return DEFAULT_IMAGE_PROCESSING_SETTINGS;
+    } catch (error) {
+      console.error('加载图像处理设置失败:', error);
+      return DEFAULT_IMAGE_PROCESSING_SETTINGS;
     }
   }
 

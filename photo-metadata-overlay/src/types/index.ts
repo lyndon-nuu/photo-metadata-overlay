@@ -156,6 +156,25 @@ export interface FrameSettings {
   };
 }
 
+// Image processing settings
+export interface ImageProcessingSettings {
+  // 分辨率设置
+  preserveOriginalResolution: boolean; // 保持原始分辨率
+  maxDimension: number; // 最大尺寸限制（像素）
+  
+  // 质量设置
+  jpegQuality: number; // JPEG质量 (1-100)
+  pngCompression: number; // PNG压缩级别 (0-9)
+  
+  // 性能设置
+  enableCache: boolean; // 启用缓存
+  maxCacheSize: number; // 最大缓存数量
+  
+  // 内存管理
+  enableMemoryOptimization: boolean; // 启用内存优化
+  memoryThreshold: number; // 内存阈值 (0-1)
+}
+
 // Legacy frame types for backward compatibility
 export interface LegacyFrameSettings {
   id: string;

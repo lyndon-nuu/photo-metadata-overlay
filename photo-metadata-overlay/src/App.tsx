@@ -24,8 +24,8 @@ import { useUndoRedo } from './hooks/useUndoRedo';
 import { useToast } from './hooks/useToast';
 import { useAppStatus } from './hooks/useAppStatus';
 import { useFileSave } from './hooks/useFileSave';
-import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings } from './types';
-import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS } from './constants/design-tokens';
+import { FileSelectedEvent, PhotoMetadata, OverlaySettings, FrameSettings, ImageProcessingSettings } from './types';
+import { DEFAULT_OVERLAY_SETTINGS, DEFAULT_FRAME_SETTINGS, DEFAULT_IMAGE_PROCESSING_SETTINGS } from './constants/design-tokens';
 import { storageService } from './services/storage.service';
 import { templateService, PresetTemplate } from './services/template.service';
 import { appInitializer } from './utils/app-initializer';
@@ -48,6 +48,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>(DEFAULT_OVERLAY_SETTINGS);
   const [frameSettings, setFrameSettings] = useState<FrameSettings>(DEFAULT_FRAME_SETTINGS);
+  const [imageProcessingSettings, setImageProcessingSettings] = useState<ImageProcessingSettings>(DEFAULT_IMAGE_PROCESSING_SETTINGS);
   const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
   const [showSettingsManager, setShowSettingsManager] = useState(false);
   const [showBatchProcessor, setShowBatchProcessor] = useState(false);
@@ -111,14 +112,20 @@ function App() {
         // 加载用户设置
         await loadSettings();
         
-        // 加载叠加和相框设置
-        const [savedOverlaySettings, savedFrameSettings] = await Promise.all([
+        // 加载叠加、相框和图像处理设置
+        const [savedOverlaySettings, savedFrameSettings, savedImageProcessingSettings] = await Promise.all([
           storageService.loadOverlaySettings(),
           storageService.loadFrameSettings(),
+          storageService.loadImageProcessingSettings(),
         ]);
         
         setOverlaySettings(savedOverlaySettings);
         setFrameSettings(savedFrameSettings);
+        setImageProcessingSettings(savedImageProcessingSettings);
+        
+        // 更新图像处理服务的设置
+        const { imageProcessingService } = await import('./services/image-processing.service');
+        imageProcessingService.updateSettings(savedImageProcessingSettings);
         
         // 检查是否有未完成的工作会话
         const workProgress = await loadWorkProgress();
@@ -218,6 +225,22 @@ function App() {
 
   const handleFrameSettingsChange = (newSettings: FrameSettings) => {
     setFrameSettings(newSettings);
+  };
+
+  const handleImageProcessingSettingsChange = async (newSettings: ImageProcessingSettings) => {
+    setImageProcessingSettings(newSettings);
+    
+    // 立即更新图像处理服务的设置
+    const { imageProcessingService } = await import('./services/image-processing.service');
+    imageProcessingService.updateSettings(newSettings);
+    
+    // 保存设置到本地存储
+    try {
+      await storageService.saveImageProcessingSettings(newSettings);
+      console.log('图像处理设置已保存');
+    } catch (error) {
+      console.error('保存图像处理设置失败:', error);
+    }
   };
 
   const handleProcessingComplete = (blob: Blob) => {
@@ -616,8 +639,10 @@ function App() {
                 <SettingsPanel
                   overlaySettings={overlaySettings}
                   frameSettings={frameSettings}
+                  imageProcessingSettings={imageProcessingSettings}
                   onOverlayChange={handleOverlaySettingsChange}
                   onFrameChange={handleFrameSettingsChange}
+                  onImageProcessingChange={handleImageProcessingSettingsChange}
                   disabled={!selectedPhoto}
                 />
               </motion.div>

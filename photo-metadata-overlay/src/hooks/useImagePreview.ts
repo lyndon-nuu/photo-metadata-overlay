@@ -148,9 +148,9 @@ export function useImagePreview(
       );
       console.log('🖼️ 相框效果完成');
 
-      // 4. 导出高质量图像（无损或高质量）
+      // 4. 导出高质量图像（无损质量）
       const originalFormat = file.type.includes('png') ? 'png' : 'jpeg';
-      const quality = originalFormat === 'png' ? 1.0 : 0.98; // PNG无损，JPEG高质量
+      const quality = 1.0; // PNG和JPEG都使用100%无损质量
       const blob = await imageProcessingService.exportImage(
         finalCanvas,
         originalFormat,

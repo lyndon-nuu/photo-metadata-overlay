@@ -167,6 +167,25 @@ export const DEFAULT_FRAME_SETTINGS = {
   },
 } as const;
 
+// Default image processing settings
+export const DEFAULT_IMAGE_PROCESSING_SETTINGS = {
+  // 分辨率设置
+  preserveOriginalResolution: true, // 默认保持原始分辨率
+  maxDimension: 8192, // 8K分辨率支持（当不保持原始分辨率时）
+  
+  // 质量设置
+  jpegQuality: 100, // JPEG 100%质量
+  pngCompression: 0, // PNG无压缩
+  
+  // 性能设置
+  enableCache: true, // 启用缓存
+  maxCacheSize: 10, // 最大缓存10个图像
+  
+  // 内存管理
+  enableMemoryOptimization: true, // 启用内存优化
+  memoryThreshold: 0.8, // 80%内存阈值
+} as const;
+
 // Frame style presets
 export const FRAME_STYLE_PRESETS = [
   {
