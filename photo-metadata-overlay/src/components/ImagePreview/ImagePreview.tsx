@@ -56,9 +56,9 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     maxCacheSize: 10,
   });
   
-  // 视口状态
+  // 视口状态 - 默认适应窗口
   const [viewport, setViewport] = useState<ViewportState>({
-    zoom: 1,
+    zoom: 1, // 初始值，会在图片加载后自动调整
     offsetX: 0,
     offsetY: 0,
     isDragging: false,
@@ -87,6 +87,11 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         previewCtx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
         previewCtx.drawImage(processedCanvas, 0, 0);
         
+        // Canvas尺寸设置完成后，自动适应窗口
+        setTimeout(() => {
+          fitToWindow();
+        }, 50);
+        
         // 更新性能指标
         const renderTime = performance.now() - renderStartTimeRef.current;
         setPerformanceMetrics(prev => ({
@@ -97,7 +102,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         }));
       }
     }
-  }, [processedCanvas, cacheSize]);
+  }, [processedCanvas, cacheSize]); // 移除fitToWindow依赖，避免循环依赖
 
   // 通知父组件处理完成
   useEffect(() => {
@@ -125,7 +130,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     });
   }, []);
 
-  // 适应窗口
+  // 适应窗口 - 智能缩放到适合窗口大小
   const fitToWindow = useCallback(() => {
     if (!canvasRef.current || !containerRef.current) return;
 
@@ -133,9 +138,25 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     const container = containerRef.current;
     const containerRect = container.getBoundingClientRect();
     
+    // 计算适合容器的缩放比例
     const scaleX = (containerRect.width - 40) / canvas.width;
     const scaleY = (containerRect.height - 40) / canvas.height;
-    const scale = Math.min(scaleX, scaleY, 1);
+    
+    // 选择较小的缩放比例以确保图片完全适应容器
+    const fitScale = Math.min(scaleX, scaleY);
+    
+    // 智能缩放策略：
+    // - 如果图片比容器大，缩小到适应容器
+    // - 如果图片比容器小，保持原始大小（不放大）
+    const scale = fitScale > 1 ? 1 : fitScale;
+
+    console.log('🖼️ 图片适应窗口:', {
+      canvasSize: `${canvas.width}x${canvas.height}`,
+      containerSize: `${containerRect.width}x${containerRect.height}`,
+      scaleX: scaleX.toFixed(3),
+      scaleY: scaleY.toFixed(3),
+      finalScale: scale.toFixed(3)
+    });
 
     setViewport({
       zoom: scale,
@@ -211,12 +232,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleZoom, resetView, fitToWindow]);
 
-  // 初始化时适应窗口
-  useEffect(() => {
-    if (photo && file) {
-      setTimeout(fitToWindow, 100);
-    }
-  }, [photo, file, fitToWindow]);
+  // 移除重复的初始化适应窗口调用，只在Canvas更新时调用
 
   if (!photo || !file) {
     return (

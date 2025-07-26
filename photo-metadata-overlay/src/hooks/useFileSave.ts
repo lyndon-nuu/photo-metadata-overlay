@@ -96,7 +96,7 @@ export function useFileSave(options: UseFileSaveOptions = {}): UseFileSaveReturn
       const defaultFileName = `${file.name.replace(/\.[^/.]+$/, '')}_processed.${fileExtension}`;
 
       // 检测是否在Tauri环境中
-      const isTauriEnv = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
+      const isTauriEnv = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__;
       
       if (isTauriEnv) {
         // Tauri环境：使用文件保存对话框

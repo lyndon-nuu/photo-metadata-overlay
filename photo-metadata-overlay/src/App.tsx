@@ -87,7 +87,7 @@ function App() {
   } = useAppStatus();
 
   // 文件保存Hook
-  const { isSaving, saveImage } = useFileSave({
+  const { saveImage } = useFileSave({
     onSaveStart: () => setLoading('正在保存图片...'),
     onSaveSuccess: (savedPath) => {
       setSuccess(`图片已保存到: ${savedPath}`);
