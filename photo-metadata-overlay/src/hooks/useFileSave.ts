@@ -133,6 +133,14 @@ export function useFileSave(options: UseFileSaveOptions = {}): UseFileSaveReturn
         const { writeFile } = await import('@tauri-apps/plugin-fs');
         await writeFile(savePath, uint8Array);
         
+        console.log('✅ 图片保存成功:', savePath);
+        
+        setLastSavedPath(savePath);
+        options.onSaveSuccess?.(savePath);
+        
+        // 显示成功提示
+        success('保存成功', `图片已保存到: ${savePath}`, { duration: 5000 });
+        
         return savePath;
       } else {
         // 浏览器环境：使用浏览器下载
