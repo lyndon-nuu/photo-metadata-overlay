@@ -66,46 +66,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
       {/* PS风格工具栏 - 右侧竖直布局 */}
       <div className="flex">
-        {/* 右侧工具栏 */}
-        <div className="flex flex-col bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            
-            return (
-              <div key={tab.id} className="relative group">
-                <button
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "relative flex items-center justify-center w-12 h-12 transition-all duration-200",
-                    isActive
-                      ? "bg-blue-500 text-white shadow-lg"
-                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400"
-                  )}
-                  title={tab.label} // 原生tooltip作为后备
-                >
-                  <Icon className="w-5 h-5" />
-                  
-                  {/* 活跃指示器 - 左侧蓝色条 */}
-                  {isActive && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600"></div>
-                  )}
-                </button>
-                
-                {/* 自定义Tooltip */}
-                <div className={cn(
-                  "absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg pointer-events-none transition-all duration-200 whitespace-nowrap z-50",
-                  "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100"
-                )}>
-                  {tab.label}
-                  {/* 箭头 */}
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700"></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        
         {/* 内容区域 */}
         <div className="flex-1 p-4">
           {/* 当前选项卡标题 */}
@@ -149,6 +109,46 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               />
             )}
           </div>
+        </div>
+        
+        {/* 右侧工具栏 */}
+        <div className="flex flex-col bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <div key={tab.id} className="relative group">
+                <button
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "relative flex items-center justify-center w-12 h-12 transition-all duration-200",
+                    isActive
+                      ? "bg-blue-500 text-white shadow-lg"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400"
+                  )}
+                  title={tab.label} // 原生tooltip作为后备
+                >
+                  <Icon className="w-5 h-5" />
+                  
+                  {/* 活跃指示器 - 右侧蓝色条 */}
+                  {isActive && (
+                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-600"></div>
+                  )}
+                </button>
+                
+                {/* 自定义Tooltip */}
+                <div className={cn(
+                  "absolute right-full top-1/2 -translate-y-1/2 mr-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg pointer-events-none transition-all duration-200 whitespace-nowrap z-50",
+                  "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100"
+                )}>
+                  {tab.label}
+                  {/* 箭头 */}
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900 dark:border-l-gray-700"></div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -209,7 +209,7 @@ const OverlaySettingsTab: React.FC<OverlaySettingsTabProps> = ({
         <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
           显示项目
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
           {Object.entries(settings.displayItems).map(([key, value]) => (
             <label key={key} className="flex items-center space-x-2">
               <input
@@ -218,7 +218,7 @@ const OverlaySettingsTab: React.FC<OverlaySettingsTabProps> = ({
                 onChange={() => handleDisplayItemChange(key as keyof OverlaySettings['displayItems'])}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
+              <span className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                 {getDisplayItemLabel(key)}
               </span>
             </label>
