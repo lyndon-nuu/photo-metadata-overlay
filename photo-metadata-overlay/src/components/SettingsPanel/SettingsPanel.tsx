@@ -64,9 +64,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
       </div>
 
-      {/* 标签页 */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex space-x-8 px-4" aria-label="Tabs">
+      {/* 现代化选项卡 */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-3 gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -76,18 +76,61 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors",
+                  "group relative flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 hover:scale-105",
                   isActive
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+                    ? "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 shadow-md border-2 border-blue-200 dark:border-blue-700"
+                    : "bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-2 border-transparent hover:border-gray-200 dark:hover:border-gray-500"
                 )}
               >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                {/* 图标容器 */}
+                <div className={cn(
+                  "flex items-center justify-center w-10 h-10 rounded-lg mb-2 transition-colors",
+                  isActive
+                    ? "bg-blue-500 text-white shadow-lg"
+                    : "bg-white dark:bg-gray-600 text-gray-600 dark:text-gray-300 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                )}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                
+                {/* 标签文字 */}
+                <span className={cn(
+                  "text-xs font-medium text-center leading-tight transition-colors",
+                  isActive
+                    ? "text-blue-700 dark:text-blue-300"
+                    : "text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200"
+                )}>
+                  {tab.label}
+                </span>
+                
+                {/* 活跃指示器 */}
+                {isActive && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full shadow-sm">
+                    <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-75"></div>
+                  </div>
+                )}
+                
+                {/* 悬停效果 */}
+                <div className={cn(
+                  "absolute inset-0 rounded-xl transition-opacity",
+                  isActive
+                    ? "bg-gradient-to-br from-blue-400/10 to-blue-600/10"
+                    : "bg-gradient-to-br from-gray-400/0 to-gray-600/0 group-hover:from-blue-400/5 group-hover:to-blue-600/5"
+                )} />
               </button>
             );
           })}
-        </nav>
+        </div>
+        
+        {/* 当前选项卡描述 */}
+        <div className="mt-4 text-center">
+          <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              {activeTab === 'overlay' && '🎨 自定义照片上的元数据显示样式'}
+              {activeTab === 'frame' && '🖼️ 为照片添加装饰性边框效果'}
+              {activeTab === 'processing' && '⚙️ 控制图像处理质量和性能'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* 内容区域 */}
