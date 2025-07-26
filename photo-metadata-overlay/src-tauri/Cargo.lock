@@ -2923,6 +2923,7 @@ dependencies = [
  "image",
  "imageproc",
  "kamadak-exif",
+ "lazy_static",
  "rusttype",
  "serde",
  "serde_json",

@@ -1,12 +1,14 @@
 mod types;
 mod exif_service;
 mod image_processing;
+mod unified_engine;
 #[cfg(test)]
 mod test_utils;
 
 use types::*;
 use exif_service::ExifService;
 use image_processing::ImageProcessingService;
+use unified_engine::{UNIFIED_ENGINE, ProcessingRequestType};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -61,15 +63,28 @@ async fn batch_process_images(
         .map_err(|e| e.to_string())
 }
 
-/// 生成预览图片
+/// 统一的图像处理API - 预览模式
 #[tauri::command]
 async fn generate_preview(
     image_path: String,
     settings: PreviewSettings,
 ) -> Result<Vec<u8>, String> {
-    ImageProcessingService::generate_preview(&image_path, settings)
-        .await
-        .map_err(|e| e.to_string())
+    // 提取元数据
+    let metadata = ExifService::extract_metadata(&image_path)
+        .map_err(|e| e.to_string())?;
+    
+    // 使用统一引擎处理预览
+    match UNIFIED_ENGINE.process_image_unified(
+        &image_path,
+        metadata,
+        settings.overlay_settings,
+        settings.frame_settings,
+        ProcessingRequestType::Preview,
+    ).await {
+        Ok(unified_engine::ProcessingResult::Preview(data)) => Ok(data),
+        Ok(_) => Err("Unexpected result type".to_string()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 /// 保存处理后的图片（带文件保存对话框）

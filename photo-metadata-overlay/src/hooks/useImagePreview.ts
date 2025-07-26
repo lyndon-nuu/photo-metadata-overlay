@@ -127,133 +127,64 @@ export function useImagePreview(
     try {
       const startTime = performance.now();
 
-      // 使用后端API生成预览，确保与保存结果100%一致
-      const { tauriAPI } = await import('../services/tauri-api.service');
-      
-      try {
-        // 1. 将File对象写入临时文件
-        const tempPath = `/tmp/temp_preview_${Date.now()}_${file.name}`;
-        
-        // 将文件内容写入临时路径
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        // 使用Tauri的fs API写入文件
-        const { writeFile } = await import('@tauri-apps/plugin-fs');
-        await writeFile(tempPath, uint8Array);
-        
-        console.log('✅ 临时文件写入成功:', tempPath);
-        
-        // 2. 转换设置格式
-        const backendOverlaySettings = tauriAPI.convertToBackendOverlaySettings(overlaySettings);
-        const backendFrameSettings = tauriAPI.convertToBackendFrameSettings(frameSettings);
-        
-        // 3. 调用后端预览API
-        const previewSettings = {
-          max_width: 1200, // 预览使用较高分辨率
-          max_height: 800,
-          overlay_settings: backendOverlaySettings,
-          frame_settings: backendFrameSettings,
-        };
-        
-        console.log('🔄 调用后端预览API...');
-        const previewBytes = await tauriAPI.generatePreview(tempPath, previewSettings);
-        
-        // 4. 将字节数组转换为Blob
-        const blob = new Blob([new Uint8Array(previewBytes)], { type: 'image/png' });
-        
-        console.log('✅ 后端预览生成成功');
-        
-        // 5. 清理临时文件
-        try {
-          const { removeFile } = await import('@tauri-apps/plugin-fs');
-          await removeFile(tempPath);
-        } catch (cleanupError) {
-          console.warn('临时文件清理失败:', cleanupError);
-        }
-        
-        // 6. 创建Canvas用于缓存（可选）
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          const img = new Image();
-          await new Promise((resolve) => {
-            img.onload = () => {
-              canvas.width = img.naturalWidth;
-              canvas.height = img.naturalHeight;
-              ctx.drawImage(img, 0, 0);
-              resolve(void 0);
-            };
-            img.src = URL.createObjectURL(blob);
-          });
-        }
-        
-        const endTime = performance.now();
-        console.log(`✅ 后端预览处理完成，耗时: ${(endTime - startTime).toFixed(2)}ms`);
+      console.log('🎨 开始纯前端高质量图像处理...');
 
-        // 缓存结果
-        if (enableCache) {
-          // 如果缓存已满，删除最旧的条目
-          if (cacheRef.current.size >= maxCacheSize) {
-            const firstKey = cacheRef.current.keys().next().value;
-            if (firstKey) {
-              cacheRef.current.delete(firstKey);
-            }
+      // 1. 加载原始图像（保持原始分辨率，无损质量）
+      const image = await imageProcessingService.loadImage(file);
+      console.log(`📸 图像加载完成: ${image.naturalWidth}x${image.naturalHeight}`);
+
+      // 2. 应用元数据叠加（高质量渲染）
+      const overlaidCanvas = await imageProcessingService.applyOverlay(
+        image,
+        photo,
+        overlaySettings
+      );
+      console.log('✨ 元数据叠加完成');
+
+      // 3. 应用相框效果（如果启用）
+      const finalCanvas = await imageProcessingService.applyFrame(
+        overlaidCanvas,
+        frameSettings
+      );
+      console.log('🖼️ 相框效果完成');
+
+      // 4. 导出高质量图像（无损或高质量）
+      const originalFormat = file.type.includes('png') ? 'png' : 'jpeg';
+      const quality = originalFormat === 'png' ? 1.0 : 0.98; // PNG无损，JPEG高质量
+      const blob = await imageProcessingService.exportImage(
+        finalCanvas,
+        originalFormat,
+        quality
+      );
+
+      const endTime = performance.now();
+      console.log(`✅ 纯前端处理完成，耗时: ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📊 输出格式: ${originalFormat}, 质量: ${quality}, 大小: ${(blob.size / 1024).toFixed(1)}KB`);
+
+      // 缓存结果
+      if (enableCache) {
+        // 如果缓存已满，删除最旧的条目
+        if (cacheRef.current.size >= maxCacheSize) {
+          const firstKey = cacheRef.current.keys().next().value;
+          if (firstKey) {
+            cacheRef.current.delete(firstKey);
           }
-          
-          cacheRef.current.set(currentSettingsHash, {
-            blob,
-            canvas,
-          });
-          console.log('💾 后端预览结果已缓存');
         }
-
-        setState(prev => ({
-          ...prev,
-          processedBlob: blob,
-          canvas,
-          error: null,
-        }));
         
-      } catch (backendError) {
-        console.warn('⚠️ 后端预览失败，回退到前端处理:', backendError);
-        
-        // 回退到前端处理
-        const image = await imageProcessingService.loadImage(file);
-        const overlaidCanvas = await imageProcessingService.applyOverlay(image, photo, overlaySettings);
-        const framedCanvas = await imageProcessingService.applyFrame(overlaidCanvas, frameSettings);
-        const originalFormat = file.type.includes('png') ? 'png' : 'jpeg';
-        const quality = originalFormat === 'png' ? 1.0 : 0.95;
-        const blob = await imageProcessingService.exportImage(framedCanvas, originalFormat, quality);
-        
-        const endTime = performance.now();
-        console.log(`✅ 前端预览处理完成，耗时: ${(endTime - startTime).toFixed(2)}ms`);
-
-        // 缓存结果
-        if (enableCache) {
-          // 如果缓存已满，删除最旧的条目
-          if (cacheRef.current.size >= maxCacheSize) {
-            const firstKey = cacheRef.current.keys().next().value;
-            if (firstKey) {
-              cacheRef.current.delete(firstKey);
-            }
-          }
-          
-          cacheRef.current.set(currentSettingsHash, {
-            blob,
-            canvas: framedCanvas,
-          });
-          console.log('💾 前端预览结果已缓存');
-        }
-
-        setState(prev => ({
-          ...prev,
-          processedBlob: blob,
-          canvas: framedCanvas,
-          error: null,
-        }));
+        cacheRef.current.set(currentSettingsHash, {
+          blob,
+          canvas: finalCanvas,
+        });
+        console.log('💾 前端处理结果已缓存');
       }
 
+      setState(prev => ({
+        ...prev,
+        processedBlob: blob,
+        canvas: finalCanvas,
+        error: null,
+      }));
+        
     } catch (err) {
       console.error('❌ 图像处理失败:', err);
       setState(prev => ({
@@ -305,8 +236,8 @@ export function useImagePreview(
       // 立即显示处理状态
       setState(prev => ({ ...prev, isProcessing: true, error: null }));
       
-      // 使用较短的防抖时间以提供更好的响应性
-      const delay = 100; // 减少延迟时间，提高响应性
+      // 使用更长的防抖时间，减少频繁调用后端API
+      const delay = 500; // 增加防抖时间，避免用户快速调整时频繁调用
       
       debounceTimerRef.current = setTimeout(() => {
         processImage();

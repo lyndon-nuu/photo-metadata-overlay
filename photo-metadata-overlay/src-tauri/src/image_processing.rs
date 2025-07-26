@@ -274,38 +274,48 @@ impl ImageProcessingService {
         Ok(DynamicImage::ImageRgba8(img_rgba))
     }
     
-    /// 加载字体文件
+    /// 加载字体文件（带缓存优化）
     fn load_font() -> Result<Font<'static>> {
-        // 尝试多种字体加载方式
+        use std::sync::OnceLock;
+        static FONT_CACHE: OnceLock<Option<Vec<u8>>> = OnceLock::new();
         
-        // 方法1: 尝试加载内嵌字体
-        let font_data = include_bytes!("../assets/fonts/DejaVuSans.ttf");
-        if let Some(font) = Font::try_from_bytes(font_data as &[u8]) {
-            return Ok(font);
-        }
-        
-        // 方法2: 尝试使用一个更小的内嵌字体数据
-        // 如果DejaVu字体有问题，我们可以尝试创建一个最小的字体
-        println!("DejaVu font failed, trying alternative approach...");
-        
-        // 方法3: 使用系统字体路径（Linux）
-        let system_font_paths = vec![
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/System/Library/Fonts/Arial.ttf", // macOS
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        ];
-        
-        for font_path in system_font_paths {
-            if let Ok(font_data) = std::fs::read(font_path) {
-                if let Some(font) = Font::try_from_vec(font_data) {
-                    println!("Successfully loaded system font: {}", font_path);
-                    return Ok(font);
+        // 使用静态缓存避免重复加载字体
+        let font_data = FONT_CACHE.get_or_init(|| {
+            // 方法1: 尝试加载内嵌字体
+            let embedded_font = include_bytes!("../assets/fonts/DejaVuSans.ttf");
+            if Font::try_from_bytes(embedded_font as &[u8]).is_some() {
+                return Some(embedded_font.to_vec());
+            }
+            
+            println!("DejaVu embedded font failed, trying system fonts...");
+            
+            // 方法2: 使用系统字体路径（Linux）
+            let system_font_paths = vec![
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/TTF/DejaVuSans.ttf",
+                "/System/Library/Fonts/Arial.ttf", // macOS
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            ];
+            
+            for font_path in system_font_paths {
+                if let Ok(font_data) = std::fs::read(font_path) {
+                    if Font::try_from_bytes(&font_data).is_some() {
+                        println!("Successfully cached system font: {}", font_path);
+                        return Some(font_data);
+                    }
                 }
             }
-        }
+            
+            None
+        });
         
-        Err(anyhow::anyhow!("Failed to load any font"))
+        match font_data {
+            Some(data) => {
+                Font::try_from_bytes(data)
+                    .ok_or_else(|| anyhow::anyhow!("Failed to parse cached font data"))
+            }
+            None => Err(anyhow::anyhow!("No font available"))
+        }
     }
 
     /// 生成叠加文本

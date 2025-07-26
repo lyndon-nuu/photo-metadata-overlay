@@ -37,6 +37,8 @@ anyhow = "1.0"
 thiserror = "1.0"
 # 文件系统操作
 uuid = { version = "1.0", features = ["v4"] }
+# 全局静态变量
+lazy_static = "1.4"
 
 [dev-dependencies]
 tempfile = "3.0"
