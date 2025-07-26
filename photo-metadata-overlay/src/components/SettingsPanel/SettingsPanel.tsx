@@ -64,98 +64,92 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
       </div>
 
-      {/* 现代化选项卡 */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-3 gap-2">
+      {/* PS风格工具栏 - 右侧竖直布局 */}
+      <div className="flex">
+        {/* 右侧工具栏 */}
+        <div className="flex flex-col bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             
             return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "group relative flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 hover:scale-105",
-                  isActive
-                    ? "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 shadow-md border-2 border-blue-200 dark:border-blue-700"
-                    : "bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-2 border-transparent hover:border-gray-200 dark:hover:border-gray-500"
-                )}
-              >
-                {/* 图标容器 */}
-                <div className={cn(
-                  "flex items-center justify-center w-10 h-10 rounded-lg mb-2 transition-colors",
-                  isActive
-                    ? "bg-blue-500 text-white shadow-lg"
-                    : "bg-white dark:bg-gray-600 text-gray-600 dark:text-gray-300 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600 dark:group-hover:text-blue-400"
-                )}>
+              <div key={tab.id} className="relative group">
+                <button
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "relative flex items-center justify-center w-12 h-12 transition-all duration-200",
+                    isActive
+                      ? "bg-blue-500 text-white shadow-lg"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400"
+                  )}
+                  title={tab.label} // 原生tooltip作为后备
+                >
                   <Icon className="w-5 h-5" />
-                </div>
+                  
+                  {/* 活跃指示器 - 左侧蓝色条 */}
+                  {isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600"></div>
+                  )}
+                </button>
                 
-                {/* 标签文字 */}
-                <span className={cn(
-                  "text-xs font-medium text-center leading-tight transition-colors",
-                  isActive
-                    ? "text-blue-700 dark:text-blue-300"
-                    : "text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200"
+                {/* 自定义Tooltip */}
+                <div className={cn(
+                  "absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg shadow-lg pointer-events-none transition-all duration-200 whitespace-nowrap z-50",
+                  "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100"
                 )}>
                   {tab.label}
-                </span>
-                
-                {/* 活跃指示器 */}
-                {isActive && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full shadow-sm">
-                    <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-75"></div>
-                  </div>
-                )}
-                
-                {/* 悬停效果 */}
-                <div className={cn(
-                  "absolute inset-0 rounded-xl transition-opacity",
-                  isActive
-                    ? "bg-gradient-to-br from-blue-400/10 to-blue-600/10"
-                    : "bg-gradient-to-br from-gray-400/0 to-gray-600/0 group-hover:from-blue-400/5 group-hover:to-blue-600/5"
-                )} />
-              </button>
+                  {/* 箭头 */}
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700"></div>
+                </div>
+              </div>
             );
           })}
         </div>
         
-        {/* 当前选项卡描述 */}
-        <div className="mt-4 text-center">
-          <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              {activeTab === 'overlay' && '🎨 自定义照片上的元数据显示样式'}
-              {activeTab === 'frame' && '🖼️ 为照片添加装饰性边框效果'}
-              {activeTab === 'processing' && '⚙️ 控制图像处理质量和性能'}
-            </span>
+        {/* 内容区域 */}
+        <div className="flex-1 p-4">
+          {/* 当前选项卡标题 */}
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center">
+              {tabs.find(tab => tab.id === activeTab)?.icon && (
+                <div className="w-6 h-6 mr-2 text-blue-600">
+                  {React.createElement(tabs.find(tab => tab.id === activeTab)!.icon, { className: "w-6 h-6" })}
+                </div>
+              )}
+              {tabs.find(tab => tab.id === activeTab)?.label}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {activeTab === 'overlay' && '自定义照片上的元数据显示样式和位置'}
+              {activeTab === 'frame' && '为照片添加装饰性边框效果和样式'}
+              {activeTab === 'processing' && '控制图像处理质量、性能和分辨率设置'}
+            </p>
+          </div>
+
+          {/* 选项卡内容 */}
+          <div>
+            {activeTab === 'overlay' && (
+              <OverlaySettingsTab
+                settings={overlaySettings}
+                onChange={onOverlayChange}
+              />
+            )}
+            
+            {activeTab === 'frame' && (
+              <FrameSettingsTab
+                settings={frameSettings}
+                onChange={onFrameChange}
+              />
+            )}
+            
+            {activeTab === 'processing' && (
+              <ImageProcessingSettingsPanel
+                settings={imageProcessingSettings}
+                onSettingsChange={onImageProcessingChange}
+                onReset={() => onImageProcessingChange(DEFAULT_IMAGE_PROCESSING_SETTINGS)}
+              />
+            )}
           </div>
         </div>
-      </div>
-
-      {/* 内容区域 */}
-      <div className="p-4">
-        {activeTab === 'overlay' && (
-          <OverlaySettingsTab
-            settings={overlaySettings}
-            onChange={onOverlayChange}
-          />
-        )}
-        
-        {activeTab === 'frame' && (
-          <FrameSettingsTab
-            settings={frameSettings}
-            onChange={onFrameChange}
-          />
-        )}
-        
-        {activeTab === 'processing' && (
-          <ImageProcessingSettingsPanel
-            settings={imageProcessingSettings}
-            onSettingsChange={onImageProcessingChange}
-            onReset={() => onImageProcessingChange(DEFAULT_IMAGE_PROCESSING_SETTINGS)}
-          />
-        )}
       </div>
     </div>
   );

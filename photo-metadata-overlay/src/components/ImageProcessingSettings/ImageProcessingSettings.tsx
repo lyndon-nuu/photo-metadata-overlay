@@ -34,7 +34,7 @@ export const ImageProcessingSettingsPanel: React.FC<ImageProcessingSettingsProps
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
           📐 分辨率设置
         </h3>
-        
+
         <div className="space-y-3">
           <label className="flex items-center space-x-3">
             <input
@@ -47,7 +47,7 @@ export const ImageProcessingSettingsPanel: React.FC<ImageProcessingSettingsProps
               保持原始分辨率
             </span>
           </label>
-          
+
           <p className="text-xs text-gray-500 dark:text-gray-400 ml-7">
             启用后将保持图像的原始分辨率，确保最高质量输出
           </p>
@@ -87,7 +87,7 @@ export const ImageProcessingSettingsPanel: React.FC<ImageProcessingSettingsProps
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
           🎨 质量设置
         </h3>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -138,7 +138,7 @@ export const ImageProcessingSettingsPanel: React.FC<ImageProcessingSettingsProps
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
           ⚡ 性能设置
         </h3>
-        
+
         <div className="space-y-3">
           <label className="flex items-center space-x-3">
             <input
@@ -151,7 +151,7 @@ export const ImageProcessingSettingsPanel: React.FC<ImageProcessingSettingsProps
               启用图像缓存
             </span>
           </label>
-          
+
           <p className="text-xs text-gray-500 dark:text-gray-400 ml-7">
             缓存处理过的图像以提高性能，避免重复处理
           </p>
@@ -191,7 +191,7 @@ export const ImageProcessingSettingsPanel: React.FC<ImageProcessingSettingsProps
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
           🧠 内存管理
         </h3>
-        
+
         <div className="space-y-3">
           <label className="flex items-center space-x-3">
             <input
@@ -204,7 +204,7 @@ export const ImageProcessingSettingsPanel: React.FC<ImageProcessingSettingsProps
               启用内存优化
             </span>
           </label>
-          
+
           <p className="text-xs text-gray-500 dark:text-gray-400 ml-7">
             自动监控内存使用情况，在内存不足时清理缓存
           </p>
